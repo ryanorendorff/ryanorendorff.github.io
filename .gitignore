@@ -1,8 +1,13 @@
+# direnv
+.direnv/
+
 # Nix
 result
 
 # Hakyll
 hakyll-cache
+_cache
+_site
 
 # Created by https://www.toptal.com/developers/gitignore/api/haskell,emacs,vim,vscode,macos,windows,agda
 # Edit at https://www.toptal.com/developers/gitignore?templates=haskell,emacs,vim,vscode,macos,windows,agda
