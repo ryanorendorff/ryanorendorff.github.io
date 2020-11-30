@@ -1,5 +1,5 @@
 ---
-title: Dependent Folds in Haskell
+title: Folds that change type at each step!
 ---
 
  <!--
@@ -36,9 +36,24 @@ compiler is used; no circuits are generated from this example.
 
 -->
 
-What is a fold?
-===============
+Outline
+=======
 
+- Introduce the basic fold on lists, show how it relates to map
+- Introduce vectors (very basic)
+- Show vetor `foldr`
+- Show how using `foldr` to define `map` does not work
+- Introduce dfold
+- Define map using dfold
+- [Need to do]: find compelling example of using dfold (prefix sum?)
+- Compare to agda definition
+
+Notes
+=====
+
+In the original paper, the symbol ↠[^1] is used to denote `TyFun`
+
+[^1]: This is to represent `Nat ↠ *`
 
 > something :: Vec 3 Int
 > something = 1 :> 2 :> 3 :> Nil
@@ -51,6 +66,11 @@ What is a fold?
 > -- be of kind?in GHC. Thus, GHC requires that the kind of a datatype end
 > -- in ... → *, as datatypes are normally meant to hold values. We can now
 > -- figure out how ↠ must be defined:
+
+The definition is what you would expect: a fold. It is obscured by the
+ requirement of the `Proxy` and `Singleton` components, which are required
+ to perform a function at the type level.
+
 > dfold' :: forall p k a . KnownNat k
 >        => Proxy (p :: TyFun Nat * -> *) -- Also written as p :: ℕ ↠ Set
 >        -> (forall l . SNat l -> a -> (p @@ l) -> (p @@ (l + 1)))
@@ -69,8 +89,8 @@ What is a fold?
 > data Append (m :: Nat) (a :: *) (f :: TyFun Nat *) :: *
 > type instance Apply (Append m a) l = Vec (l + m) a
 >
-> data AddOne (a :: *) (f :: TyFun Nat *) :: *
-> type instance Apply (AddOne a) l = Vec l a
+> data MapMotive (a :: *) (f :: TyFun Nat *) :: *
+> type instance Apply (MapMotive a) l = Vec l a
 >
 > append' :: (KnownNat m, KnownNat n) => Vec m a -> Vec n a -> Vec (m + n) a
 > append' xs ys = dfold' (Proxy :: Proxy (Append m b)) (const (:>)) ys xs
@@ -84,7 +104,7 @@ What is a fold?
 > mapList f xs = Data.List.foldr (\a r -> f a : r) [] xs
 >
 > map' :: (KnownNat m) => (a -> b) -> Vec m a -> Vec m b
-> map' f xs = dfold (Proxy :: Proxy (Append m b)) (const (\a r -> (f a) :> r)) Nil xs
+> map' f xs = dfold (Proxy :: Proxy (MapMotive b)) (const (\a r -> (f a) :> r)) Nil xs
 >
 > main :: IO ()
 > main = do
@@ -93,9 +113,24 @@ What is a fold?
 >   print (append' something something)
 >   print (mapList (+ 1) [1, 2, 3])
 
-Example Agda listing
+We can define the dependently typed fold in Agda as well as a comparison.
+This demonstrates that the type level functions are much easier to encode,
+as they are first class constructs in Agda.
 
 ```agda
-id : {A : Set} → A → A
-id x = x
+dfold : {a : Set}
+      → {k : ℕ} -- Size of input vector
+      → (p : ℕ → Set) -- Motive
+      → ((l : ℕ) → a → p l → p (suc l)) -- f
+      → p 0 -- base
+      → Vec a k -- thing to process
+      → p k
+dfold {k = 0} p step base [] = base
+dfold {k = suc n} p step base (x ∷ xs) = step n x (dfold p step base xs)
+
+dmap : {a b : Set} → {n : ℕ} → (a → b) → Vec a n → Vec b n
+dmap {a} {b} {n} f xs = dfold (λ l → Vec b l) (λ _ x xs → f x ∷ xs) [] xs
+
+_ : dmap (λ x → x + 3) (1 ∷ 2 ∷ 3 ∷ []) ≡ (4 ∷ 5 ∷ 6 ∷ [])
+_ = refl
 ```
