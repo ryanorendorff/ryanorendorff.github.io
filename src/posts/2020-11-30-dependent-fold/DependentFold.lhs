@@ -71,38 +71,60 @@ The common example for a fold is summing a list.
 
 For functions like `sum`, at each step we are taking our accumulator value
 and combining that with the head of the list, producing something that is
-the same shape as the accumulator. Explicitly for a sum on a list of
-`Int`s, we can get from one step to the next using this equation
+the same shape as the accumulator. When Haskell type checks our sum
+program, it attempts to "unify" all of our type variables, which means that
+the type checker looks to find a type that satisfys all instances where a
+type variable occurs. For example, if we take the sum case
 
-TODO: Add better figure/TeX here describing the type of each piece.
+< --             These must be the same b
+< --             ↓    ↓     ↓           ↓
+< foldr :: (a -> b -> b) -> b -> [a] -> b
+<
+< sum ([1, 2, 3] :: [Int]) = foldr (+) 0 ([1, 2, 3] :: [Int])
 
-$$
-accum_{i + i} = x_i + accum_i
-$$
+The type checker will deal with the following equations (along with a few
+more); `~` means that the type variable on the left must be equal to the
+expression on the right.
 
-and at step $i + 1$, we will have something with the same shape as what we
-had at step $i$ (a single `Int`). No matter how long the input list is, the
-result will always be an `Int` that can be stored in the same number of
-bytes.
+- `b ~ Num a => a`  (from the base case 0)
+- `a ~ Int` (from the input)
+- `b ~ a` (from `(+)`)
+
+From these equations, the compiler will determine that `b` must be an `Int`,
+as it is the only type that allows all the equations above to be true.
 
 Folds have another trick up their sleeves though; they can be used to _build
-up_ a structure, meaning that the shape of the result _changes every step_.
-Take the `map` function, which we can define in terms of a fold.
+up_ a structure. Take the `map` function, which we can define in terms of a
+fold.
 
 > map :: (a -> b) -> [a] -> [b]
 > map f = foldr (\head accum -> f head : accum) []
 
-Here, our equation for how to get from one step to the next is.
+If we look at the `map` function as a fold form
 
-TODO: Add better figure/TeX here describing the type of each piece.
+< --             These must be the same b
+< --             ↓    ↓     ↓           ↓
+< foldr :: (a -> b -> b) -> b -> [a] -> b
+<
+<   map (+ 1) ([1, 2, 3] :: [Int])
+< = foldr (\head accum -> head + 1 : accum) [] ([1, 2, 3] :: [Int])
 
-$$
-accum_{i + 1} = f(x) : accum_i
-$$
+and break down its equations, we can see we have similar equations to the
+`sum` case with an extra type variable `c` to keep track of the inner type
+of the final list.
 
-But now each step takes a list of length `n` and makes a list of length `n + 1`!
-This means that the length of the list that results from this type of
-fold _depends_ on what list is passed to the function.
+1. `b ~ [c]`  (from the base case `[]`)
+2. `a ~ Int` (from the input)
+3. `c ~ a` (by unifying `a` from the input and the `(+ 1)` function)
+
+From these equations, the Haskell compiler can an extra equation that is
+noteworthy.
+
+< (a -> b -> b) ~ c -> [c] -> [c] -- (from the )
+
+- `(a -> b -> b) ~ (c -> [c] -> [c])` (from the function `(+ 1)`)
+
+Haskell has no problem 
 
 
 Types that depend on values are called dependent types
@@ -128,6 +150,7 @@ _stored the shape of the value in its type_.
 Given that we essentially have a list (with some type level magic), it seems
 reasonable that we can define a version of fold for `Vec`.
 
+> -- Foldr for the Vec type
 > vfoldr :: (a -> b -> b) -> b -> Vec n a -> b
 > vfoldr f z Nil       = z
 > vfoldr f z (x `Cons` xs) = x `f` vfoldr f z xs
