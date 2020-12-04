@@ -418,14 +418,14 @@ same as `HoldMyType` with a more descriptive name.
 We can now define the map function by passing in our type step function and
 the normal `map` value level step function.
 
-> vmap :: forall a b m. (KnownNat m) => (a -> b) -> Vec m a -> Vec m b
-> vmap f xs = dfold (Proxy :: Proxy (MapMotive b)) step Nil xs
+> vmap :: forall c d m. (KnownNat m) => (c -> d) -> Vec m c -> Vec m d
+> vmap f xs = dfold (Proxy :: Proxy (MapMotive d)) step Nil xs
 >   where
 >     step :: forall step.
 >             SNat step
->          -> a
->          -> MapMotive b @@ step
->          -> MapMotive b @@ (step + 1)
+>          -> c
+>          -> MapMotive d @@ step
+>          -> MapMotive d @@ (step + 1)
 >     step l x xs = f x `Cons` xs
 
 The `forall`s are required to allow the `step` function type refer to the
@@ -434,11 +434,14 @@ same `a` as the call to `dfold`.
 GHC can infer where to apply the `MapMotive` function if the definition of
 the step is inlined, leading to a more compact definition.
 
-> vmap' :: forall a b m. (KnownNat m) => (a -> b) -> Vec m a -> Vec m b
+> vmap' :: forall c d m. (KnownNat m) => (c -> d) -> Vec m c -> Vec m d
 > vmap' f xs = dfold
->                (Proxy :: Proxy (MapMotive b))
+>                (Proxy :: Proxy (MapMotive d))
 >                (\l value intermediate -> f value `Cons` intermediate)
 >                Nil xs
+
+TODO (maybe): Do the same constraint breakdown analysis here to show how
+things work out all nice and dandy.
 
 This fold is a strict superset of `vfoldr`. To demonstrate this, we can
 define `vfoldr_by_dfold` by returning _the same type_ at each step of the
@@ -458,7 +461,7 @@ function.
 Finally, we show define the sum function using `dfold` via
 `vfoldr_by_dfold`.
 
-> vsum_by_dfold :: (KnownNat n, Num a) => Vec n a -> a
+> vsum_by_dfold :: (KnownNat n, Num c) => Vec n c -> c
 > vsum_by_dfold = vfoldr_by_dfold (+) 0
 > -- Ex: vsum_by_dfold (1 :> 2 :> 3 :> Nil) == 0
 
@@ -523,8 +526,8 @@ and then pass this function into `dfold` by _partially applying_ it with the
 type of the output vector.
 
 ```agda
-map : {a b : Set} → {n : ℕ} → (a → b) → Vec a n → Vec b n
-map {a} {b} {n} f xs = dfold (map_motive b) (λ _ x xs → f x ∷ xs) [] xs
+map : {c d : Set} → {n : ℕ} → (c → d) → Vec c n → Vec d n
+map {c} {d} {n} f xs = dfold (map_motive d) (λ _ x xs → f x ∷ xs) [] xs
 --                                  ↑
 --                     map_motive is partially applied,
 --                     leading to a Nat → Set function
