@@ -32,7 +32,7 @@ compiler is used; no circuits are generated from this example.
 >
 > module DependentFold where
 >
-> import Clash.Prelude hiding (foldr, sum, map, dfold)
+> import Clash.Prelude hiding (foldr, sum, map, dfoldr)
 > import qualified Clash.Prelude as C
 > import Data.Singletons.Prelude (TyFun,Apply,type (@@))
 > import Data.Kind
@@ -46,33 +46,35 @@ functions as a way to simplify control flow. One of the most ubiquitous
 higher order functions is the fold.
 
 > -- A right fold. If we unroll the fold, it would look like
-> -- step x₀ (step x₁ (step x₂ … (step xₙ [])))
+> -- step x₀ (step x₁ (step x₂ … (step xₙ base)))
 > foldr :: (a -> b -> b) -> b -> [a] -> b
 > foldr step base []     = base
 > foldr step base (x:xs) = step x (foldr step base xs)
 
 The fold allows us to consume some data structure (a list in this case) one
 element at a time, producing an intermediate result each time an element of
-the structure is consumed using the `step` function. For example, we can
-convert a list into the sum of its elements by using the `step` function
-`(+)` that adds the intermediate result to each element of the list as it is
-consumed.
+the structure is passed to the `step` function. For example, we can convert
+a list into the sum of its elements by using the `step` function `(+)` that
+adds the intermediate result to each element of the list as it is consumed.
 
 > sum :: (Num c) => [c] -> c
-> sum = foldr (+) 0
+> sum = foldr (\value intermediate -> value + intermediate) 0
+> --                                  └──────────────────┘
+> --                            The new intermediate value after
+> --                                 each step of the fold.
 
 To get a better handle on what happens at each step, lets look at the type
 that GHC will infer given our type signature. When GHC type checks our `sum`
 function, it attempts to unify all type variables, meaning that the type
 checker looks for types that make sense every place that a type variable is.
-For example, if we attempt to figure out `a` and `b` when type checking the
-`sum` function
+If we want to figure out `a` and `b` when type checking the `sum` function
 
-< --             These must be the same b
-< --             ↓    ↓     ↓           ↓
-< foldr :: (a -> b -> b) -> b -> [a] -> b
-<
-< sum xs = foldr (+) 0 xs
+< --                    These must be the same type b
+< --                      ↓    ↓     ↓           ↓
+< --       foldr :: (a -> b -> b) -> b -> [a] -> b
+< sum xs = foldr (\value intermediate -> value + intermediate) 0 xs
+< --                          ↑          └────────↑─────────┘  ↑ 
+< --                 These must be values of the same the same concrete type
 
 we can determine what constraints GHC will use to find the type for each
 type variable. Let's look at the constraints for `b`, using the notation `b
@@ -84,8 +86,8 @@ type variable. Let's look at the constraints for `b`, using the notation `b
 - `b ~ Num c => c`  (from the base case 0)
 - `b ~ c` (from `(+)`)
 
-From these constraints, the compiler will determine that `b` must be an `a`,
-as `a` is the only type that allows all the equations above to be true.
+From these constraints, the compiler will determine that `b` must be an `c`,
+as `c` is the only type that allows all the equations above to be true.
 
 Folds have another trick up their sleeve though; they can be used to _build
 up a new structure_. We can define another common higher order function, the
@@ -94,21 +96,18 @@ up a new structure_. We can define another common higher order function, the
 > map :: (c -> d) -> [c] -> [d]
 > map f xs = foldr (\value intermediate -> f value : intermediate) [] xs
 > --                                       └────────────────────┘
-> --                                    The new intermediate value after
+> --                                  The new intermediate _list_ after
 > --                                       each step of the fold.
 
 If we do the same analysis for `map` as we did with `sum` to find out what
 the type variables should be
 
-< --             These must be the same b
-< --             ↓    ↓     ↓           ↓
-< foldr :: (a -> b -> b) -> b -> [a] -> b
-<
-<   map (+ 1) xs
-< = foldr (\value intermediate -> value + 1 : intermediate) [] xs
-< --                              └──────────────────────┘
-< --                           The new intermediate _list_ after
-< --                               each step of the fold.
+< --                            These must be the same b
+< --                            ↓    ↓     ↓           ↓
+< --             foldr :: (a -> b -> b) -> b -> [a] -> b
+< map (+ 1) xs = foldr (\value intermediate -> value + 1 : intermediate) [] xs
+< --                                ↑          └──────────↑───────────┘  ↑ 
+< --                       These must be values of the same the same concrete type
 
 we get the following constraints, where `c` and `d` come from the map function.
 
@@ -118,7 +117,7 @@ we get the following constraints, where `c` and `d` come from the map function.
 From these constraints, the Haskell compiler can derive an extra constraint
 that is noteworthy.
 
-< (a -> b -> b) ~ c -> [c] -> [c] -- (from the function passed to `foldr`)
+< (a -> b -> b) ~ c -> [c] -> [c] -- (from the step function passed to `foldr`)
 
 This constraint means that at each step of the fold, a list is given as
 input and a list is returned as output. What is different about this fold
@@ -206,22 +205,17 @@ So we should be able to recreate `map` using `vfoldr`, right?
 <         vmap :: forall c d (n :: Nat). (c -> d) -> Vec n c -> Vec n d
 <     Expected type: Vec n d
 <       Actual type: Vec 0 d
-<   • In the expression:
-<       vfoldr (\ value intermediate -> f value `Cons` intermediate) Nil xs
-<     In an equation for ‘vmap’:
-<         vmap f xs
-<           = vfoldr
-<               (\ value intermediate -> f value `Cons` intermediate) Nil xs
 < -}
 
 Oh no, what happened?! Let's look at the constraints that GHC is attempting
 to resolve in this case.
 
-< --                      These must be the same b
-< --                         ↓               ↓
-< vfoldr :: (a -> b -> b) -> b -> Vec n a -> b
-<
+< --                            These must be the same b
+< --                          ↓    ↓     ↓               ↓
+< --          vfoldr :: (a -> b -> b) -> b -> Vec n a -> b
 < vmap f xs = vfoldr (\value intermediate -> f value `Cons` intermediate) Nil xs
+< --                              ↑          └────────────↑─────────────┘  ↑ 
+< --                     These must be values of the same the same concrete type
 
 - `b ~ Vec n d` (from the result type of `vfoldr`)
 - `b ~ Vec 0 d` (from the type of `Nil`)
@@ -245,8 +239,7 @@ In a dependent type context, the fold that preserves a structure (`vsum`) is
 _fundamentally different_ from a fold that can change the structure at each
 step (`vmap`). This is to say that in the case of `vsum`, each invocation
 takes and returns the same type for the intermediate value, but for the
-`vmap` case, the type of the intermediate value changes after each time the
-`step` function is called.
+`vmap` case, the _type is different for each intermediate value_.
 
 Luckily, it is possible to define a fold where we provide the compiler some
 information on how the type changes at each step using a _dependently typed
@@ -280,7 +273,7 @@ type[^4].
 [^4]: "Complete" here means that the type has kind `Type`. All types that
     hold a value during runtime must have the kind `Type`.
 
-< NatToVec Int 3 == Vec 3 Int
+< NatToVec Int 3 = Vec 3 Int
 
 Unfortunately Haskell cannot represent type level functions quite this
 cleanly. The first restriction is that the kind `StepFunction` has to be
@@ -307,9 +300,9 @@ family to define the `StepFunction` function itself.
 [^6]: All type level functions must be complete in the sense that all
     arguments have been given to the type level function when it is called.
 
-> -- We are holding onto both a type _and_ a StepFunction
+> -- We are holding onto both a type and a StepFunction
 > --
-> --                                  StepFunction
+> --                                   StepFunction
 > --                          ┌───────────────────────────┐
 > data HoldMyType (a :: Type) (f :: TyFun Nat Type) :: Type
 > type instance Apply (HoldMyType a) nth_step = Vec nth_step a
@@ -319,37 +312,37 @@ before we are passed the current step number, enabling us to bypass the
 problem of no partial type level functions. `Apply` can be written infix as
 `@@`; instead of writing
 
-< (NatToVec Int) 3 == Vec 3 Int
+< (NatToVec Int) 3 = Vec 3 Int
 
 as we would with a normal function, we will write
 
-< (HoldMyType Int) @@ 3 == Vec 3 Int
+< (HoldMyType Int) @@ 3 = Vec 3 Int
 
 to determine the type at a particular step.
 
 With type level functions, we can now define the dependently typed fold. The
 function signature is as follows.
 
-> -- This function is copied from the Clash library as
-> -- Clash.Sized.Vector.dfold
-> dfold :: forall p k a . KnownNat k
+> -- This function is copied from the Clash library, where it is
+> -- defined as Clash.Sized.Vector.dfold
+> dfoldr :: forall p n a . KnownNat n
 >       => Proxy (p :: StepFunction)
 >       -> (forall l . SNat l -> a -> (p @@ l) -> (p @@ (l + 1)))
 >       -> (p @@ 0)
->       -> Vec k a
->       -> (p @@ k)
+>       -> Vec n a
+>       -> (p @@ n)
 
-There is a bunch going on here, so let's break it down by each argument to
-`dfold`. The first part of the signature is
+There is a bunch going on in this type signature, so let's break it down by
+each argument to `dfoldr`. The first part of the signature is
 
-< dfold :: forall p k a . KnownNat k =>
+< dfoldr :: forall p n a . KnownNat n =>
 
 which specifies the `KnownNat` constraint for the length of our input vector
-`k`. This constraint allows us to pass in the type level natural number of
+`n`. This constraint allows us to pass in the type level natural number of
 the input vector into other type level functions through the use of
 `Proxy`.
 
-The next line says that our `dfold` function will take in a type level
+The next line says that our `dfoldr` function will take in a type level
 function for how to generate the type at each step of the fold. This
 function is sometimes called the _motive_.
 
@@ -376,21 +369,22 @@ For this particular step function, we do not need to use `l` when defining
 the function, as the increase in the step is taken into account in the
 function's type.
 
-The last few lines of the `dfold` type are the the same base case, input
+The last few lines of the `dfoldr` type are the the same base case, input
 vector, and result type as `foldr`, but with the base and result type
 parameterized by which step of the fold they are related to (`0` for base,
-`k` for the end of the fold).
+`n` for the end of the fold).
 
 < -> (p @@ 0) -- Base case (such as `Nil`)
-< -> Vec k a  -- The `Vec` to fold over
-< -> (p @@ k) -- The type after the final step in the fold.
+< -> Vec n a  -- The `Vec` to fold over
+< -> (p @@ n) -- The type after the final step in the fold.
 
-Now that we have the `dfold` function type, how is it defined?
+Now that we have the `dfoldr` function type, how is it defined?
 
-> -- step k x₀ (step (k - 1) x₁ (step (k - 2) x₂ … (step 0 xₙ [])))
-> dfold _ step base xs = go (snatProxy (asNatProxy xs)) xs
+> -- If we unroll the dependent fold, it would look like
+> -- step n x₀ (step (n - 1) x₁ (step (n - 2) x₂ … (step 0 xₙ [])))
+> dfoldr _ step base xs = go (snatProxy (asNatProxy xs)) xs
 >   where
->     go :: SNat n -> Vec n a -> (p @@ n)
+>     go :: SNat l -> Vec l a -> (p @@ l)
 >     go _         Nil                       = base
 >     go step_num (y `Cons` (ys :: Vec z a)) = 
 >       let step_num_minus_one = step_num `subSNat` d1 -- (d1 is the same as 1)
@@ -418,8 +412,8 @@ same as `HoldMyType` with a more descriptive name.
 We can now define the map function by passing in our type step function and
 the normal `map` value level step function.
 
-> vmap :: forall c d m. (KnownNat m) => (c -> d) -> Vec m c -> Vec m d
-> vmap f xs = dfold (Proxy :: Proxy (MapMotive d)) step Nil xs
+> vmap :: forall c d n. (KnownNat n) => (c -> d) -> Vec n c -> Vec n d
+> vmap f xs = dfoldr (Proxy :: Proxy (MapMotive d)) step Nil xs
 >   where
 >     step :: forall step.
 >             SNat step
@@ -429,23 +423,60 @@ the normal `map` value level step function.
 >     step l x xs = f x `Cons` xs
 
 The `forall`s are required to allow the `step` function type refer to the
-same `a` as the call to `dfold`.
+same `a` as the call to `dfoldr`[^7].
+
+[^7]: Haskell is a bit strange with the type level function. If `MapMotive`
+    is passed anything specified in the `forall` that is not `d`, it will
+    correctly comment that argument passed to `MapMotive` does not unify
+    with the other types. However, it will happily accept any other
+    unspecified type variable. My assumption here is that if a new variable
+    is introduced (say `δ`), it will implicitly add the `forall
+    δ_new_identifier` qualification with a new identifier during type
+    inference (as to not alias with an existing α) and then conclude
+    `δ_new_identifier ~ d` as the only way to make the types unify.
+    Dependent languages similar to Haskell like Agda will not automatically
+    universally quantify a stray type variable for you as generalized type
+    inference is undecidable in a dependently typed context (see
+    https://cs.stackexchange.com/a/12957).
 
 GHC can infer where to apply the `MapMotive` function if the definition of
 the step is inlined, leading to a more compact definition.
 
-> vmap' :: forall c d m. (KnownNat m) => (c -> d) -> Vec m c -> Vec m d
-> vmap' f xs = dfold
+> vmap' :: forall c d n. (KnownNat n) => (c -> d) -> Vec n c -> Vec n d
+> vmap' f xs = dfoldr
 >                (Proxy :: Proxy (MapMotive d))
 >                (\l value intermediate -> f value `Cons` intermediate)
 >                Nil xs
 
-TODO (maybe): Do the same constraint breakdown analysis here to show how
-things work out all nice and dandy.
+So we now have a way to specify `vmap` that GHC is happy with! Let's break
+down the constraints GHC reconstructs to be able to verify why this works
+for ourselves. The first problem we had before was that the base case passed
+in had a different type than the result (`Vec 0 a ~ Vec n a`).
 
-This fold is a strict superset of `vfoldr`. To demonstrate this, we can
-define `vfoldr_by_dfold` by returning _the same type_ at each step of the
-fold
+- `p @@ 0 ~ (MapMotive d) @@ 0 ~ Vec 0 d`
+- `p @@ n ~ (MapMotive d) @@ n ~ Vec n d`
+
+The first problem does not occur for `vmap` because we no longer need to
+unify the base and end case; they are distinct types in the dependent fold.
+What about the second problem, where the step function changes the type? For
+that conundrum,
+
+- `p @@ l ~ (MapMotive d) @@ l ~ Vec l d`
+- `p @@ (l + 1) ~ (MapMotive d) @@ (l + 1) ~ Vec (l + 1) d`
+- `SNat l -> a -> p @@ l -> p @@ (l + 1) ~ SNat l -> c -> Vec l d -> Vec
+  (l + 1) d` (from unifying the step function for `dfoldr` and the step
+  function defined in `vmap`)
+  
+we can see that the last constraint is consistent between the definition of
+`dfoldr` and the definition of `vmap`.
+
+
+One fold to rule them all
+=========================
+
+The `dfoldr` fold is a strict superset of `vfoldr`. To demonstrate this, we
+can define `vfoldr_by_dfoldr` by returning _the same type_ at each step of
+the fold
 
 > data FoldMotive (a :: Type) (f :: TyFun Nat Type) :: Type
 > type instance Apply (FoldMotive a) l = a
@@ -453,17 +484,17 @@ fold
 and applying the function passed to the fold to both arguments in the step
 function.
 
-> vfoldr_by_dfold :: KnownNat n => (a -> b -> b) -> b -> Vec n a -> b
-> vfoldr_by_dfold step base xs =
->   dfold (Proxy :: Proxy (FoldMotive b))
+> vfoldr_by_dfoldr :: KnownNat n => (a -> b -> b) -> b -> Vec n a -> b
+> vfoldr_by_dfoldr step base xs =
+>   dfoldr (Proxy :: Proxy (FoldMotive b))
 >         (\l value intermediate -> step value intermediate) base xs
 
-Finally, we show define the sum function using `dfold` via
-`vfoldr_by_dfold`.
+Finally, we show define the sum function using `dfoldr` via
+`vfoldr_by_dfoldr`.
 
-> vsum_by_dfold :: (KnownNat n, Num c) => Vec n c -> c
-> vsum_by_dfold = vfoldr_by_dfold (+) 0
-> -- Ex: vsum_by_dfold (1 :> 2 :> 3 :> Nil) == 0
+> vsum_by_dfoldr :: (KnownNat n, Num c) => Vec n c -> c
+> vsum_by_dfoldr = vfoldr_by_dfoldr (+) 0
+> -- Ex: vsum_by_dfoldr (1 :> 2 :> 3 :> Nil) == 0
 
 
 Comparison to a fully dependently typed language
@@ -474,8 +505,8 @@ level functions through `Proxy`, `TyFun`, `Apply`, and other mechanisms to
 enable type level functions. In fully dependent type languages such as Agda,
 there is no distinction between values, types, or kinds. This means that
 when we define a function, we can use it at _any level_ in the type
-hierarchy. We can demonstrate this by reimplementing `dfold` in Agda. The
-type of `dfold` in Agda is
+hierarchy. We can demonstrate this by reimplementing `dfoldr` in Agda. The
+type of `dfoldr` in Agda is
 
 
 ```agda
@@ -483,24 +514,24 @@ type of `dfold` in Agda is
 -- Agda needs the specific type `a` passed in, and but the
 -- curly braces allow us to omit the types if the Agda compiler
 -- can figure it out automatically.
-dfold :  {a : Set}
-      → {k : Nat}
-      → (p : Nat → Set) -- Motive
-      → ((l : Nat) → a → p l → p (1 + l)) -- step function
-      → p 0 -- base case
-      → Vec a k
-      → p k
+dfoldr : {a : Set}
+       → {n : Nat}
+       → (p : Nat → Set) -- Motive
+       → ((l : Nat) → a → p l → p (1 + l)) -- step function
+       → p 0 -- base case
+       → Vec a n
+       → p n
 ```
 
 where the motive function `p` can be defined directly without the use of
 `Proxy` or `SNat`, and applied without a special operator. The definition of
-`dfold` really demonstrates just how similar the regular and dependently
+`dfoldr` really demonstrates just how similar the regular and dependently
 typed fold are.
 
 ```agda
-dfold {k = 0} p step base [] = base
-dfold {k = suc n} p step base (x ∷ xs) = step n x (dfold p step base xs)
--- suc k == 1 + k
+dfoldr {n = 0}       p step base []       = base
+dfoldr {n = suc n-1} p step base (x ∷ xs) = step n-1 x (dfold p step base xs)
+-- suc n == 1 + n
 
 -- List version for comparison
 foldr : {a b : Set} -> (a -> b -> b) -> b -> List a -> b
@@ -510,8 +541,8 @@ foldr step base (x ∷ xs) = step x (foldr step base xs)
 
 The only difference between the dependently typed fold on vectors and the
 fold on lists is passing around the type level step number `n` and the
-motive `p`. The `subSNat` function in the Haskell `dfold` is replaced by
-induction on `k`; a `k + 1` is passed into `dfold` and `k` is passed down to
+motive `p`. The `subSNat` function in the Haskell `dfoldr` is replaced by
+induction on `n`; a `n + 1` is passed into `dfoldr` and `n` is passed down to
 the recursive call.
 
 We can define the map function as well. The first step is to define the
@@ -522,12 +553,12 @@ map_motive : Set -> Nat -> Set
 map_motive a l = Vec a l
 ```
 
-and then pass this function into `dfold` by _partially applying_ it with the
+and then pass this function into `dfoldr` by _partially applying_ it with the
 type of the output vector.
 
 ```agda
 map : {c d : Set} → {n : ℕ} → (c → d) → Vec c n → Vec d n
-map {c} {d} {n} f xs = dfold (map_motive d) (λ _ x xs → f x ∷ xs) [] xs
+map {c} {d} {n} f xs = dfoldr (map_motive d) (λ _ x xs → f x ∷ xs) [] xs
 --                                  ↑
 --                     map_motive is partially applied,
 --                     leading to a Nat → Set function
@@ -537,35 +568,32 @@ Fully dependent type languages like Agda allow for type level shenanigans to
 be defined much more clearly because there is no difference between defining
 a type level and value level function. In fact, a function can often be used
 at any level of the type hierarchy; the `+` function can be used for on
-`Nat` values, on `Nat` types, on `Nat` kinds, and beyond[^7]!
+`Nat` values, on `Nat` types, on `Nat` kinds, and beyond[^8]!
 
-[^7]: In Haskell, the hierarchy of objects is `values -> types -> kinds ->
+[^8]: In Haskell, the hierarchy of objects is `values -> types -> kinds ->
     sorts`. Languages like Agda take this further and define a _universe_
     type hierarchy, which is indexed by a natural number. Specifically, in
     Agda the hierarchy is `Set₀ -> Set₁ -> Set₂ -> …`
     
-
-Haskell currently needs a bunch of extensions to do the same thing as Agda
---------------------------------------------------------------------------
-
-To get the same functionality in Haskell, we had to use the following
-language extensions.
+To get the same functionality in Haskell, we had to go through quite a bit
+of extension gymnastics.
 
 - `GADTs` to define `Vec`.
 - `TypeOperators` to be able to use `+` on the type level.
 - `DataKinds` to be able to define type level `Nat`.
 - `KindSignatures` to be able to write out `n :: Nat` as a kind.
 - `TypeFamilies` to be able to define an instance of `Apply`
-- `RankNTypes` to force our step function to work over all steps (the
-  `forall l.` part of the `dfold` definition).
+- `RankNTypes` to require that the step function passed to `dfoldr` works
+  for all steps (the `forall l.` part of the `dfoldr` definition).
 - `ScopedTypeVariables` to be able to reference the same `a` in our `step`
    function for `vmap`.
 
 Haskell's dependent type features are exciting; they represent a way to use
 dependent types in a mainstream language while keeping all of the current
-libraries that exist in Hackage. Hopefully in the future, the syntax and
-structure around the type level features become as easy to specify as they
-are in Agda, Idris, or other fully dependently typed language.
+libraries that exist in Hackage. Currently the developer experience of using
+dependent types is a tad challenging, but as dependent typed become more
+fleshed out in Haskell the experience should improve. are in Agda, Idris, or
+other fully dependently typed language.
 
  <!--
 
@@ -576,7 +604,7 @@ In the original paper, the symbol ↠[^4] is used to denote `TyFun`
 
 [^4]: This is to represent `Nat ↠ *`
 
-> -- This is exactly the clash dfold, just to make sure we have everything
+> -- This is exactly the clash dfoldr, just to make sure we have everything
 > --  we need to define the function.
 >
 > -- Promoting Functions to Type Families in Haskell, R. Eisenberg
@@ -593,7 +621,7 @@ The definition is what you would expect: a fold. It is obscured by the
 > type instance Apply (Append m a) l = Vec (l + m) a
 >
 > append' :: (KnownNat m, KnownNat n) => Vec m a -> Vec n a -> Vec (m + n) a
-> append' xs ys = dfold (Proxy :: Proxy (Append m b)) (const (:>)) ys xs
+> append' xs ys = dfoldr (Proxy :: Proxy (Append m b)) (const (:>)) ys xs
 >
 > -- This will not work because we need something to provide us with the
 > -- next element in the fold
@@ -620,7 +648,7 @@ The definition is what you would expect: a fold. It is obscured by the
 >   print $ (Nil :: Vec 0 Int)
 >   print $ append' something something
 >   print $ mapList (+ 1) [1, 2, 3]
->   print $ vsum_by_dfold (1 :> 2 :> 3 :> Nil)
+>   print $ vsum_by_dfoldr (1 :> 2 :> 3 :> Nil)
 
 <   sum [1, 2, 3]
 < ≡ foldr (+) 0 [1, 2, 3]
