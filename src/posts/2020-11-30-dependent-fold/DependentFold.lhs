@@ -2,6 +2,10 @@
 title: Dependently typed folds
 subtitle: folds that change type at each step!
 header-includes: |
+  \makeatletter
+  \def\verbatim@nolig@list{}
+  \makeatother
+
   \usepackage{fontspec}
   \setmonofont{Iosevka}
 ---
@@ -38,6 +42,7 @@ compiler is used; no circuits are generated from this example.
 > import Data.Kind
 > import Data.Proxy
 > import qualified Data.List
+> import Control.Exception
 
 -->
 
@@ -398,6 +403,11 @@ zero, in which case we return the base case `z` of type `p @@ 0`. The rest
 of the `snatProxy`, `asNatProxy`, and `SNat` components are
 to shepherd around the changing step number through each call to `go`.
 
+Notice that the motive function `p` is not used in the definition of
+`dfoldr`. This is because the function is used only at the type level; a
+value level `Proxy` object is used to pass around the motive function to
+other functions and has no tangible use as a value.
+
 
 Can we dependently map now?
 ===========================
@@ -533,7 +543,8 @@ dfoldr {n = 0}       p step base []       = base
 dfoldr {n = suc n-1} p step base (x ∷ xs) = step n-1 x (dfold p step base xs)
 -- suc n == 1 + n
 
--- List version for comparison
+-- List version for comparison; ∷ and [] can be used for either
+-- List or Vec, where the type is inferred by context.
 foldr : {a b : Set} -> (a -> b -> b) -> b -> List a -> b
 foldr step base []       = base
 foldr step base (x ∷ xs) = step x (foldr step base xs)
@@ -585,8 +596,8 @@ of extension gymnastics.
 - `TypeFamilies` to be able to define an instance of `Apply`
 - `RankNTypes` to require that the step function passed to `dfoldr` works
   for all steps (the `forall l.` part of the `dfoldr` definition).
-- `ScopedTypeVariables` to be able to reference the same `a` in our `step`
-   function for `vmap`.
+- `ScopedTypeVariables` to be able to reference the same `c` and `d` in our
+  `step` function as in the top level `vmap` function.
 
 Haskell's dependent type features are exciting; they represent a way to use
 dependent types in a mainstream language while keeping all of the current
@@ -597,67 +608,22 @@ other fully dependently typed language.
 
  <!--
 
-Notes
-=====
+> testVector :: Vec 3 Int
+> testVector = 1 :> 2 :> 3 :> Nil
 
-In the original paper, the symbol ↠[^4] is used to denote `TyFun`
+> test :: Bool -> String -> IO ()
+> test b s = if b then return () else (putStrLn s >> return ())
 
-[^4]: This is to represent `Nat ↠ *`
-
-> -- This is exactly the clash dfoldr, just to make sure we have everything
-> --  we need to define the function.
->
-> -- Promoting Functions to Type Families in Haskell, R. Eisenberg
-> -- Here,we must be careful, though: all types that contain values must
-> -- be of kind * in GHC. Thus, GHC requires that the kind of a datatype end
-> -- in ... → *, as datatypes are normally meant to hold values. We can now
-> -- figure out how ↠ must be defined:
-
-The definition is what you would expect: a fold. It is obscured by the
- requirement of the `Proxy` and `Singleton` components, which are required
- to perform a function at the type level.
-
-> data Append (m :: Nat) (a :: *) (f :: TyFun Nat *) :: *
-> type instance Apply (Append m a) l = Vec (l + m) a
->
-> append' :: (KnownNat m, KnownNat n) => Vec m a -> Vec n a -> Vec (m + n) a
-> append' xs ys = dfoldr (Proxy :: Proxy (Append m b)) (const (:>)) ys xs
->
-> -- This will not work because we need something to provide us with the
-> -- next element in the fold
-> -- map'' :: (KnownNat m) => (a -> b) -> Vec m a -> Vec m b
-> -- map'' f xs = foldr (\a r -> (f a) :> r) Nil xs
-
-> mapList :: (a -> b) -> [a] -> [b]
-> mapList f xs = Data.List.foldr (\a r -> f a : r) [] xs
->
-> something :: Vec 3 Int
-> something = 1 :> 2 :> 3 :> Nil
->
-
-> -- type family Sum (ns :: [Nat]) where
-> --   Sum '[] = 0
-> --   Sum (n ': ns) = n + Sum ns
-
->
->
+> -- Basic testing here just to make sure the functions are somewhat sanely
+> -- implemented
 > main :: IO ()
 > main = do
->   print $ sum [1, 2, 3]
->   print $ vmap (\x -> x + 3) something
->   print $ (Nil :: Vec 0 Int)
->   print $ append' something something
->   print $ mapList (+ 1) [1, 2, 3]
->   print $ vsum_by_dfoldr (1 :> 2 :> 3 :> Nil)
-
-<   sum [1, 2, 3]
-< ≡ foldr (+) 0 [1, 2, 3]
-< ≡ 1 + (foldr (+) 0 [2, 3])
-< ≡ 1 + (2 + (foldr (+) 0 [3]))
-< ≡ 1 + (2 + (3 + (foldr (+) 0 [])))
-< ≡ 1 + (2 + (3 + (0)))
-< ≡ 1 + (2 + 3)
-< ≡ 1 + 5
-< ≡ 6
+>   test (sum [1, 2, 3] == 6)
+>     "Definition of `sum` is failing"
+>   test (vmap (\x -> x + 3) testVector == 4 :> 5 :> 6 :> Nil)
+>     "Definition of `vmap` is failing"
+>   test (vsum_by_dfoldr testVector == 6)
+>     "Definition of `vsum_by_dfoldr` is failing"
+>   print "Run complete"
 
 -->
