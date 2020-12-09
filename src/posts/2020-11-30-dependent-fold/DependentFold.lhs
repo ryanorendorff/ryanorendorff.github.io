@@ -511,6 +511,14 @@ Finally, we define the sum function using `dfoldr` via `vfoldr_by_dfoldr`.
 > vsum_by_dfoldr = vfoldr_by_dfoldr (+) 0
 > -- Ex: vsum_by_dfoldr (1 :> 2 :> 3 :> Nil) == 6
 
+Since dependently typed folds subsume the standard folds, it would be
+possible to replace all folds with their dependent counterpart. I have
+doubts that this would be a good direction for Haskell; while we can likely
+automatically derive the definition of the standard fold from the dependent
+fold, the developer implementing an instance of the `Foldable` typeclass
+would now need to use dependent types, which may be a rough barrier
+especially if the developer has no intention for the fold to be used in a
+dependent context.
 
 Comparison to a fully dependently typed language
 ================================================
