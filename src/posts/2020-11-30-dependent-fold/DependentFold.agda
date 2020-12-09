@@ -37,3 +37,11 @@ dappend {a} {m} {n} xs ys = dfold (λ l → Vec a (l + n)) (λ _ x xs → x ∷ 
 
 _ : dappend (1 ∷ 2 ∷ []) (3 ∷ 4 ∷ []) ≡ 1 ∷ 2 ∷ 3 ∷ 4 ∷ []
 _ = refl
+
+ind : {a : Set} {p : List a → Set}
+    → ((x : a) → {xs : List a} → p xs → p (x ∷ xs))
+    → p []
+    → (l : List a)
+    → p l
+ind step base [] = base
+ind step base (x ∷ xs) = step x (ind step base xs)

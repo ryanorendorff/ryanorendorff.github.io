@@ -507,11 +507,12 @@ intermediate value.
 
 Finally, we define the sum function using `dfoldr` via `vfoldr_by_dfoldr`.
 
+
 > vsum_by_dfoldr :: (KnownNat n, Num c) => Vec n c -> c
 > vsum_by_dfoldr = vfoldr_by_dfoldr (+) 0
 > -- Ex: vsum_by_dfoldr (1 :> 2 :> 3 :> Nil) == 6
 
-Since dependently typed folds subsume the standard folds, it would be
+Since dependently typed folds subsume the standard folds[^8], it would be
 possible to replace all folds with their dependent counterpart. I have
 doubts that this would be a good direction for Haskell; while we can likely
 automatically derive the definition of the standard fold from the dependent
@@ -519,6 +520,30 @@ fold, the developer implementing an instance of the `Foldable` typeclass
 would now need to use dependent types, which may be a rough barrier
 especially if the developer has no intention for the fold to be used in a
 dependent context.
+
+[^8]: There is a version of dependent fold for lists as well, which can be demonstrated in Agda as follows.
+```agda
+dfoldr : {a : Set} {p : List a → Set}
+       → ((x : a) → {xs : List a} → p xs → p (x ∷ xs))
+       → p []
+       → (l : List a)
+       → p l
+dfoldr step base [] = base
+dfoldr step base (x ∷ xs) = step x (dfoldr step base xs)
+```
+The Agda variant uses a value level list reflected into the type (both for `l` and `xs`), which is hard/potentially not possible to do in Haskell at the moment.
+
+ <!--
+ 
+What is neat about all these dependent folds is that they codify the notion
+of proof by induction; you can use dependently typed folds to prove
+properties about a program! For example, you could use `dfoldr` to show that
+the `vmap` function, when passed `id`, returns the same list. That is
+something that is much easier to demonstrate in Agda though. I may try to
+demonstrate the proof in Haskell and make that a different post.
+
+-->
+
 
 Comparison to a fully dependently typed language
 ================================================
@@ -591,9 +616,9 @@ Fully dependent type languages like Agda allow for type level shenanigans to
 be defined much more clearly because there is no difference between defining
 a type level and value level function. In fact, a function can often be used
 at any level of the type hierarchy; the `+` function can be used on `Nat`
-values, on `Nat` types, on `Nat` kinds, and beyond[^8]!
+values, on `Nat` types, on `Nat` kinds, and beyond[^9]!
 
-[^8]: In Haskell, the hierarchy of objects is `values -> types -> kinds ->
+[^9]: In Haskell, the hierarchy of objects is `values -> types -> kinds ->
     sorts`. Languages like Agda take this further and define a _universe_
     type hierarchy, which is indexed by a natural number. Specifically, in
     Agda the hierarchy is `Set₀ -> Set₁ -> Set₂ -> …`
