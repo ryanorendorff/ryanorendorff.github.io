@@ -82,7 +82,7 @@ used.
 < --       foldr :: (a -> b -> b) -> b -> [a] -> b
 < sum xs = foldr (\value intermediate -> value + intermediate) 0 xs
 < --                          ↑          └────────↑─────────┘  ↑ 
-< --                 These must be values of the same the same concrete type
+< --                     These must be values of the same concrete type
 
 If we want to figure out `a` and `b` when type checking the `sum` function,
 we can determine what constraints GHC will use to find the type for each
@@ -96,7 +96,7 @@ the following.
 - `b ~ Num c => c`  (from the base case 0)
 - `b ~ c` (from `(+)`)
 
-From these constraints, the compiler will determine that `b` must be an `c`,
+From these constraints, the compiler will determine that `b` must be a `c`,
 as `c` is the only type that satisfies both constraints above.
 
 Folds have another trick up their sleeve; they can be used to _build up a
@@ -117,7 +117,7 @@ the type variables should be
 < --             foldr :: (a -> b -> b) -> b -> [a] -> b
 < map (+ 1) xs = foldr (\value intermediate -> value + 1 : intermediate) [] xs
 < --                                ↑          └──────────↑───────────┘  ↑ 
-< --                       These must be values of the same the same concrete type
+< --                            These must be values of the same concrete type
 
 we get the following constraints, where `c` and `d` come from the map function.
 
