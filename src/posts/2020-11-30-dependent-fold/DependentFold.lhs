@@ -305,11 +305,13 @@ of an auxiliary type that is constant, for example the `a` we end up needing
 to define `Vec n a`. We could use `NatToVec` to hold onto the type of the
 `Vec` if we partial apply the function as `NatToVec a`. However, Haskell's
 type level functions cannot be partially applied[^6]. Therefore, we must
-store the type we want to use in another type, and use the `Apply` type
-family to define the `StepFunction` function itself.
+store the type we want to use in another type such as `HoldMyType`[^7], and
+use the `Apply` type family to define the `StepFunction` function itself.
 
 [^6]: All type level functions must be complete in the sense that all
     arguments have been given to the type level function when it is called.
+
+[^7]: Or beer :-D
 
 > --                                   StepFunction
 > --                          ┌───────────────────────────┐
@@ -335,11 +337,11 @@ function signature is as follows.
 > -- This function is copied from the Clash library, where it is
 > -- defined as Clash.Sized.Vector.dfold
 > dfoldr :: forall p n a . KnownNat n
->       => Proxy (p :: StepFunction)
->       -> (forall l . SNat l -> a -> (p @@ l) -> (p @@ (l + 1)))
->       -> (p @@ 0)
->       -> Vec n a
->       -> (p @@ n)
+>        => Proxy (p :: StepFunction)
+>        -> (forall l . SNat l -> a -> (p @@ l) -> (p @@ (l + 1)))
+>        -> p @@ 0
+>        -> Vec n a
+>        -> p @@ n
 
 There is a bunch going on in this type signature, so let's break it down by
 each argument to `dfoldr`. The first part of the signature is
@@ -386,9 +388,9 @@ vector, and result type as `foldr`, but with the base and result type
 parameterized by which step of the fold they are related to (`0` for base,
 `n` for the end of the fold).
 
-< -> (p @@ 0) -- Base case, i.e. the first intermediate value (such as `Nil`)
+< -> p @@ 0 -- Base case, i.e. the first intermediate value (such as `Nil`)
 < -> Vec n a  -- The `Vec` to fold over
-< -> (p @@ n) -- The type after the final step in the fold.
+< -> p @@ n -- The type after the final step in the fold.
 
 Now that we have the `dfoldr` function type, how is it defined?
 
@@ -429,7 +431,7 @@ same as `HoldMyType` with a more descriptive name.
 We can now define the map function by passing in our type step function and
 the normal `map` value level step function. The `forall`s are required to
 allow the `step` type signature to refer to the same `c` and `d` that appear
-in the signature for `vmap`[^7].
+in the signature for `vmap`[^8].
 
 > vmap :: forall c d n. (KnownNat n) => (c -> d) -> Vec n c -> Vec n d
 > vmap f xs = dfoldr (Proxy :: Proxy (MapMotive d)) step Nil xs
@@ -441,14 +443,14 @@ in the signature for `vmap`[^7].
 >          -> MapMotive d @@ (step + 1)
 >     step l x xs = f x `Cons` xs
 
-[^7]: Haskell is a bit strange with the type level function. If `MapMotive`
+[^8]: Haskell is a bit strange with the type level function. If `MapMotive`
     is passed anything specified in the `forall` that is not `d`, it will
     correctly comment that argument passed to `MapMotive` does not unify
     with the other types. However, it will happily accept any other
     unspecified type variable. My assumption here is that if a new variable
     is introduced (say `δ`), it will implicitly add the `forall
-    δ_new_identifier` qualification with a new identifier during type
-    inference (as to not alias with an existing α) and then conclude
+    δ_new_identifier` quantification with a new identifier during type
+    inference (as to not alias with an existing δ) and then conclude
     `δ_new_identifier ~ d` as the only way to make the types unify.
     Dependent languages similar to Haskell like Agda will not automatically
     universally quantify a stray type variable for you as generalized type
@@ -512,7 +514,7 @@ Finally, we define the sum function using `dfoldr` via `vfoldr_by_dfoldr`.
 > vsum_by_dfoldr = vfoldr_by_dfoldr (+) 0
 > -- Ex: vsum_by_dfoldr (1 :> 2 :> 3 :> Nil) == 6
 
-Since dependently typed folds subsume the standard folds[^8], it would be
+Since dependently typed folds subsume the standard folds[^9], it would be
 possible to replace all folds with their dependent counterpart. I have
 doubts that this would be a good direction for Haskell; while we can likely
 automatically derive the definition of the standard fold from the dependent
@@ -521,7 +523,7 @@ would now need to use dependent types, which may be a rough barrier
 especially if the developer has no intention for the fold to be used in a
 dependent context.
 
-[^8]: There is a version of dependent fold for lists as well, which can be demonstrated in Agda as follows.
+[^9]: There is a version of dependent fold for lists as well, which can be demonstrated in Agda as follows.
 ```agda
 dfoldr : {a : Set} {p : List a → Set}
        → ((x : a) → {xs : List a} → p xs → p (x ∷ xs))
@@ -616,9 +618,9 @@ Fully dependent type languages like Agda allow for type level shenanigans to
 be defined much more clearly because there is no difference between defining
 a type level and value level function. In fact, a function can often be used
 at any level of the type hierarchy; the `+` function can be used on `Nat`
-values, on `Nat` types, on `Nat` kinds, and beyond[^9]!
+values, on `Nat` types, on `Nat` kinds, and beyond[^10]!
 
-[^9]: In Haskell, the hierarchy of objects is `values -> types -> kinds ->
+[^10]: In Haskell, the hierarchy of objects is `values -> types -> kinds ->
     sorts`. Languages like Agda take this further and define a _universe_
     type hierarchy, which is indexed by a natural number. Specifically, in
     Agda the hierarchy is `Set₀ -> Set₁ -> Set₂ -> …`
