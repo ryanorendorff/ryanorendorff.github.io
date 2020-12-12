@@ -48,6 +48,16 @@ compiler is used; no circuits are generated from this example.
 
 -->
 
+I have been working with dependent types for a bit now, and it really
+changes how I view even the most fundamental of functional operations.
+Dependent types allow us to explore functions where the type of an
+intermediate or output value dynamically changes type depending on the input
+value. We will look at the standard fold functions, and how they take on a
+new meaning in a dependently typed context.
+
+The standard fold
+=================
+
 In functional programming languages like Haskell, we like to use higher order
 functions as a way to simplify control flow. One of the most ubiquitous
 higher order functions is the fold.
