@@ -179,7 +179,7 @@ value. This allows us to define a type similar to a list called `Vec`
 common definition for `Vec` is as follows[^2].
 
 [^2]: More info on GADT syntax can be found here:
-    https://typeclasses.com/ghc/gadt-syntax
+    [https://typeclasses.com/ghc/gadt-syntax](https://typeclasses.com/ghc/gadt-syntax)
 
 < data Vec (n :: Nat) (a :: Type) where
 <     Nil :: Vec 0 a
@@ -307,8 +307,7 @@ from the type level step function[^5].
 
 [^5]: The reasoning here is the same as the prior note; types that
     eventually hold a value must end in `-> Type`. This is described in the
-    paper "Promoting Functions to Type Families in Haskell" by Richard
-    Eisenberg.
+    paper "[Promoting Functions to Type Families in Haskell](https://dl.acm.org/doi/pdf/10.1145/2775050.2633361?casa_token=5vHGXkO_9oUAAAAA%3ArWVg64659TviMuKE6mKuX71BvlyS9f6c_Kefe0_QNcRqCTGKh_3YglKeXOVun3p4rkbHom4EoFYCPw)" by Richard Eisenberg.
 
 When we are defining a `StepFunction` function, we often want to keep track
 of an auxiliary type that is constant, for example the `a` we end up needing
@@ -465,7 +464,7 @@ in the signature for `vmap`[^8].
     Dependent languages similar to Haskell like Agda will not automatically
     universally quantify a stray type variable for you as generalized type
     inference is undecidable in a dependently typed context (see
-    https://cs.stackexchange.com/a/12957).
+    [https://cs.stackexchange.com/a/12957](https://cs.stackexchange.com/a/12957)).
 
 GHC can infer where to apply the `MapMotive` function if the definition of
 the step is inlined, leading to a more compact definition.
@@ -494,7 +493,7 @@ conundrum,
 - `SNat l -> a -> p @@ l -> p @@ (l + 1) ~ SNat l -> c -> Vec l d -> Vec (l + 1) d`
   (from unifying the step function for `dfoldr` and the step function
   defined in `vmap`)
-  
+
 we can see that the last constraint is consistent between the definition of
 `dfoldr` and the definition of `vmap`.
 
@@ -536,17 +535,17 @@ dependent context.
 [^9]: There is a version of dependent fold for lists as well, which can be demonstrated in Agda as follows.
 ```agda
 dfoldr : {a : Set} {p : List a → Set}
-       → ((x : a) → {xs : List a} → p xs → p (x ∷ xs))
-       → p []
-       → (l : List a)
-       → p l
-dfoldr step base [] = base
+           → ((x : a) → {xs : List a} → p xs → p (x ∷ xs))
+           → p []
+           → (l : List a)
+           → p l
+dfoldr step base []       = base
 dfoldr step base (x ∷ xs) = step x (dfoldr step base xs)
 ```
 The Agda variant uses a value level list reflected into the type (both for `l` and `xs`), which is hard/potentially not possible to do in Haskell at the moment.
 
  <!--
- 
+
 What is neat about all these dependent folds is that they codify the notion
 of proof by induction; you can use dependently typed folds to prove
 properties about a program! For example, you could use `dfoldr` to show that
@@ -634,7 +633,7 @@ values, on `Nat` types, on `Nat` kinds, and beyond[^10]!
     sorts`. Languages like Agda take this further and define a _universe_
     type hierarchy, which is indexed by a natural number. Specifically, in
     Agda the hierarchy is `Set₀ -> Set₁ -> Set₂ -> …`
-    
+
 To get the same functionality in Haskell, we had to go through quite a bit
 of extension gymnastics.
 
