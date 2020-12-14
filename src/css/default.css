@@ -94,21 +94,17 @@ ul.no-bullets {
 }
 
 h1 {
-  margin-top: 26pt;
   margin-bottom: 0pt;
-  font-size: 18pt;
   text-align: left;
   text-transform: lowercase;
   font-variant: small-caps;
 }
 
 h2 {
-  font-size: 16pt;
   text-align: left;
 }
 
 article .title {
-  font-size: 22pt;
   font-weight: 700;
   font-style: bold;
   text-transform: lowercase;
@@ -116,7 +112,6 @@ article .title {
 }
 
 article .subtitle {
-    font-size: 18pt;
     font-weight: 400;
     font-style: italic;
     margin-bottom: 1em;
@@ -173,6 +168,7 @@ article .date {
   }
 }
 
+/* phone screen size */
 @media (min-width: 320px) {
   body {
     font-size: 11pt;
@@ -212,7 +208,7 @@ article .date {
   }
 
   article .subtitle {
-      font-size: 14pt;
+      font-size: 12pt;
   }
 
   article .date {
@@ -230,6 +226,7 @@ article .date {
 
 }
 
+/* Normal webpage size */
 @media (min-width: 640px) {
   body {
     width: 650px;
