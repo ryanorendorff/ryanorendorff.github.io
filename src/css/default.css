@@ -102,6 +102,9 @@ h1 {
 
 h2 {
   text-align: left;
+  text-transform: lowercase;
+  font-variant: small-caps;
+  text-align: left;
 }
 
 article .title {
@@ -227,6 +230,7 @@ hr {
   }
 
   h2 {
+      /* margin-top: 22pt; */
       font-size: 12pt;
   }
 
@@ -285,6 +289,7 @@ hr {
   }
 
   h2 {
+      /* margin-top: 26pt; */
       font-size: 16pt;
   }
 }
