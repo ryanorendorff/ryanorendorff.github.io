@@ -653,6 +653,19 @@ libraries that exist in Hackage. The current developer experience of using
 dependent types is a tad challenging, but as dependent types become more
 fleshed out in Haskell the experience should improve.
 
+
+Acknowledgements
+----------------
+
+I would like to thank Daniel Hensley and Jon Thacker for reviewing drafts of
+this article.
+
+
+Want to run the code in this blog post?
+---------------------------------------
+
+This blog post is a [literate haskell file](https://github.com/ryanorendorff/ryanorendorff.github.io/blob/main/src/posts/2020-12-19-dependent-fold/DependentFold.lhs) that you can run to play around with the topics discussed in the post. There is an included [run.sh](https://github.com/ryanorendorff/ryanorendorff.github.io/blob/main/src/posts/2020-12-19-dependent-fold/run.sh) script that will run the code in the post without needing to install anything; the run script requires that [Nix](https://nixos.org) is installed.
+
  <!--
 
 > testVector :: Vec 3 Int
