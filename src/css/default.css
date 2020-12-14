@@ -129,12 +129,18 @@ article .date {
   font-variant: small-caps;
 }
 
+hr {
+    border: 0;
+    border-top: 1px solid var(--nord3);
+    border-bottom: 1px solid var(--nord3);
+}
+
 .footnote-ref {
     margin-left: 2pt;
     margin-right: 1pt;
 }
 
-.quite {
+.quiet {
     color: #666;
     font-size: 11pt
 }
