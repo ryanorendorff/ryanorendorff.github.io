@@ -42,8 +42,8 @@ main = do
                 >>= relativizeUrls
                 >>= cleanIndexUrls
 
-    match "index.html" $ do
-        route idRoute
+    create ["index.md"] $ do
+        route $ setExtension "html"
         compile $ do
             posts <- recentFirst =<< loadAll "posts/*/*"
             let indexCtx =
@@ -51,7 +51,7 @@ main = do
                     constField "title" "Home"                `mappend`
                     defaultContext
 
-            getResourceBody
+            pandocCompiler
                 >>= applyAsTemplate indexCtx
                 >>= loadAndApplyTemplate "templates/default.html" indexCtx
                 >>= relativizeUrls
