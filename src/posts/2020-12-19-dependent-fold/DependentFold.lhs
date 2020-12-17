@@ -654,6 +654,16 @@ dependent types is a tad challenging, but as dependent types become more
 fleshed out in Haskell the experience should improve.
 
 
+Comments, questions?
+--------------------
+
+If you have any comments or questions, feel free to do one of the following.
+
+- Contact me at my email, which is this web address with the `.` after ryan replaced with an `@`.
+- Open an [issue on my github page](https://github.com/ryanorendorff/ryanorendorff.github.io).
+- Say hi on [LinkedIn](https://www.linkedin.com/in/ryan-orendorff-153a45ba/)
+
+
 Acknowledgements
 ----------------
 
