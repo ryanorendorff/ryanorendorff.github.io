@@ -11,7 +11,7 @@ in pkgs.stdenv.mkDerivation {
 
   # From https://github.com/rpearce/hakyll-nix-template/blob/main/default.nix
   # Haskell code often fails to compile when the encoding is not set to
-  # UFT-8. 
+  # UFT-8.
   LOCALE_ARCHIVE = pkgs.lib.optionalString (pkgs.buildPlatform.libc == "glibc")
     "${pkgs.glibcLocales}/lib/locale/locale-archive";
   LANG = "en_US.UTF-8";
@@ -24,7 +24,10 @@ in pkgs.stdenv.mkDerivation {
 
   doCheck = true;
   checkPhase = ''
-    site check --internal-links
+    # This will also check that external links are valid. Hence this build is
+    # not deterministic! But it seems useful to know when a link is broken
+    # somewhere.
+    site check
   '';
 
   installPhase = ''
