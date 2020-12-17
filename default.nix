@@ -24,10 +24,8 @@ in pkgs.stdenv.mkDerivation {
 
   doCheck = true;
   checkPhase = ''
-    # This will also check that external links are valid. Hence this build is
-    # not deterministic! But it seems useful to know when a link is broken
-    # somewhere.
-    site check
+    # We can't check the external links on the github runner.
+    site check --internal-links
   '';
 
   installPhase = ''
