@@ -2,5 +2,5 @@ let
   sources = import ./sources.nix { };
   pkgs = import sources.nixpkgs { };
   gitignoreSource = import ./gitignore.nix;
-  src = import ./src.nix;
-in pkgs.haskellPackages.callCabal2nix "site" src { }
+  site-src = import ./site-src.nix;
+in pkgs.haskellPackages.callCabal2nix "site" site-src { }
