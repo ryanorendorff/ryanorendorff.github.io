@@ -1,10 +1,7 @@
 name: "Website"
-on:
-  push:
-    branches:
-      - main
+on: push
 jobs:
-  tests:
+  build-deploy:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2.3.4
@@ -15,6 +12,7 @@ jobs:
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
     - run: nix-build
     - name: Upload HTML
+      if: github.ref == 'refs/heads/main'
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
