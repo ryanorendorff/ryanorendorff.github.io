@@ -235,7 +235,7 @@ to resolve in this case.
 < --                          ↓    ↓     ↓               ↓
 < --          vfoldr :: (a -> b -> b) -> b -> Vec n a -> b
 < vmap f xs = vfoldr (\value intermediate -> f value `Cons` intermediate) Nil xs
-< --                              ↑          └────────────↑─────────────┘  ↑ 
+< --                              ↑          └────────────↑────────────┘   ↑
 < --                            These must be values of the same concrete type
 
 - `b ~ Vec n d` (from the result type of `vmap`)
