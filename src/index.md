@@ -1,5 +1,5 @@
-Hi! My name is Ryan Orendorff, and I am a Research Scientist in the Facebook
-Reality Labs Research divsion working on brain computer interface (BCI)
+Hi! My name is Ryan Orendorff, and I am a Research Scientist in Meta's 
+Reality Labs Research divsion working on human computer interface (HCI)
 research.  I enjoy working on type theory, functional programming, and linear
 algebra in my spare time.
 
