@@ -5,5 +5,5 @@ let
   site = import ./nix/site.nix;
 in pkgs.mkShell {
   inputsFrom = [ site.env ];
-  buildInputs = [ niv pkgs.nixfmt ];
+  buildInputs = [ pkgs.nixfmt ];
 }
