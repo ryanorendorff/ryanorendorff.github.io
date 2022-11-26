@@ -1,5 +1,5 @@
-Hi! My name is Ryan Orendorff I enjoy working on type theory, functional
-programming, and linear algebra in my spare time, and very occasionally blog
+Hi! My name is Ryan Orendorff, and I enjoy working on type theory, functional
+programming, and linear algebra in my spare time. I very occasionally blog
 about those topics here.
 
 ### Most recent blog posts
