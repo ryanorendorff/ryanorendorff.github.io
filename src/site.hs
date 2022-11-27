@@ -19,7 +19,7 @@ main = do
         route   idRoute
         compile copyFileCompiler
 
-    match "posts/*/*.lhs"  $ do
+    match ("posts/*/*.lhs" .||. ("posts/*/*.md" .&&. complement ("posts/*/README.md"))) $ do
         route $ (customRoute removeFileNameRoute)
         compile $ pandocCompiler
             >>= loadAndApplyTemplate "templates/post.html"    postCtx
