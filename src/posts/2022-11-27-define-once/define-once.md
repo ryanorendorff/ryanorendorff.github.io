@@ -4,9 +4,10 @@ subtitle: A terrible hack that ends up being surprisingly useful
 ---
 
 Sometimes when we have a function that takes a long time to run, and we would
-really rather attempt to avoid running the function more than necessary.
-Luckily, if our function a pure function[^1], then we can memoize the result of
-the function given some inputs using `cache`.
+really rather avoid running the function more often than absolutely necessary.
+Luckily, if our function is a pure function[^1], then we can
+[memoize](https://en.wikipedia.org/wiki/Memoization) the result of calling the
+function using the `cache` function.
 
 [^1]: The function's inputs and outputs form a relation and the function does
       no side effects such as print out to standard out.
@@ -22,8 +23,8 @@ def this_function_takes_forever(*args, **kwargs):
 
 This is an excellent way to reduce compute time when making a repeated calls to
 a function with the same inputs. Excited with this technique, we implement some
-long running function in a Jupyter notebook and slap the `cache` decorator
-on top to memoize the results.
+long running function in a [Jupyter notebook](https://jupyter.org/) and slap the
+`cache` decorator on top to memoize the results.
 
 ```python
 @cache
@@ -32,15 +33,10 @@ def long_running_notebook_function(*args, **kwargs):
     return result
 ```
 
-We use this new function with abandon within our code, and it significantly
-reduce the time it takes the cells in the notebook to run. At some point we want
-to rerun everything in the notebook (to say regenerate some plots with new
+We use this new function with reckless abandon in our code, and it significantly
+reduce the time it takes a cell in the notebook to run. At some point we want to
+rerun everything in the notebook (to say regenerate some plots with new
 `matplotlib.rcParams` settings), and we use the "Run All Cells" menu item
-
-<!--
-Run cell ▶ 
-Run all ▸▸
--->
 
 ...
 
@@ -50,9 +46,9 @@ and it now takes _forever_ to run the same cells that. What happened?!
 ## Functions are redefined every time a cell is run
 
 When using a notebook, the code in a cell is rerun every time we execute that
-cell. The results are all assigned to the global namespace in the running
-notebook kernel. Put another way, we can think of running a cell as the
-following pseudocode.
+cell. The definitions in the cell being run are assigned to the global namespace
+in the running notebook kernel. Put another way, we can think of running a cell
+as the following pseudocode.
 
 ```python
 # Before running a cell, we can find find all globally defined
@@ -87,14 +83,18 @@ function in the global namespace. We lose track of our first cached function!
 
 ## But all is not lost!
 
-For the `cache` decorator to continue working even after running a cell, we
-need to keep track of the function with the cache attached and not lose track of
-it when running a cell. Conveniently, the `globals()` dictionary gives us access
-to the global namespace, enabling us to see if a function with a given name
-already exists and hold onto the original definition instead of redefining the
-function. The name of a function can be looked up through the `__name__`
-property, so we can define the following generator to find the existing function
-and keep it.
+For the `cache` decorator to working even after running the cell that defines
+the desired function multiple times, we need to keep track of the original
+function with the cache attached and ignore the new function created when the
+cell is run again. Conveniently, the `globals()` dictionary gives us access to
+the global namespace, enabling us to see if a function with a given name already
+exists and hold onto the original definition instead of the new (likely
+equivalent) definition.  The name of a function can be looked up through the
+`__name__` property, so we can define the following decorator[^2] to find the
+existing function and keep it.
+
+[^2]: A decorator is just a higher order function (a function that takes another
+      function as an argument).
 
 ```python
 def define_once_first_try(f):
@@ -109,9 +109,9 @@ def define_once_first_try(f):
 ```
 
 Now we can decorate our function with `define_once_first_try` once it is
-memoized[^2] to prevent subsequent reruns of a cell from clearing out our cache.
+memoized[^3] to prevent subsequent reruns of a cell from clearing out our cache.
 
-[^2]: The order of decorators actually does not matter; `cache` is smart enough
+[^3]: The order of decorators actually does not matter; `cache` is smart enough
       to notice that a cache for the specific function already exists.
 
 ```python
@@ -123,9 +123,9 @@ def long_running_notebook_function(*args, **kwargs):
 ```
 
 Now we can go back to merrily coding in our notebook, using "Run All Cells"
-recklessly without worry of recomputing expensive results.
+recklessly without worrying about recomputing expensive results.
 
-At some point, we realized our `long_running_notebook_function` has a bug. No
+At some point, we realize our `long_running_notebook_function` has a bug. No
 problem, we can go back and fix the function and go back to the task at hand.
 
 ```python
@@ -150,13 +150,14 @@ it only keeps track of the first definition of the code, meaning we can never
 alter that definition. It would be amazing if we could write perfect code so
 that we would not need to redefine a function, but alas we are human. What the
 `define_once` function should really be doing is detecting _if the function
-definition changes_, and if it does, to accept the new definition.
+meaningfully changes_, and if it does, to accept the new definition
+(invalidating the old cache in the process).
 
 We can get a function's source code using the `inspect.getsource` function from
-the standard library and use the source code to see if the function changed. If
-the code has not changed, then we should return the original pointer to the
-function (with the cache attached); otherwise we should use the new function
-definition.
+the standard library and use the source code to see if the function changed in a
+meaningful way. If the code has not changed, then we should return the original
+pointer to the function (with the cache attached); otherwise we should use the
+new function definition.
 
 ```python
 import inspect
@@ -193,19 +194,21 @@ Our new problem is that the function source code includes both the instructions
 of what to run and the details required to make the code readable to humans.
 Things such as [tabs versus spaces](https://www.youtube.com/watch?v=SsoOG6ZeyUI)
 don't change what the function actually does, but changes what the program looks
-like on our computer screens. What we would really like is a representation of
-only the computational bits of the function, which we could then use to compare
-the existing implementation of a function from the redefinition from a function.
+like on our computer screens. We can make changes to a function such as adding
+comments that do not _meaningfully_ change a function, but change the source
+code nonetheless.
 
-Luckily we can extract the [abstract syntax tree
-(AST)](https://en.wikipedia.org/wiki/Abstract_syntax_tree) for a function in
-python using the `ast` module in the standard library. The AST is the data
-structure that represents the program after it has been parsed from its text
-origins, retaining only the computationally relevant bits.
+What we would really like is a representation of only the computational bits of
+the function, which we could then use to compare the existing implementation of
+a function from the redefinition from a function.  Luckily we can extract the
+[abstract syntax tree (AST)](https://en.wikipedia.org/wiki/Abstract_syntax_tree)
+for a function in python using the `ast` module in the standard library. The AST
+is the data structure that represents the program after it has been parsed from
+its text origins, retaining only the computationally relevant bits.
 
 We can define our `define_once` function to compare the AST of a functions and
-its redefinition and only accept the redefinition if it is does something
-computationally different.
+its redefinition and only accept the redefinition if it does something
+meaningfully different.
 
 ```python
 def function_to_ast_string(f):
@@ -241,11 +244,18 @@ And with this version of `define_once` we can finally
 - are immune to syntactic changes causing a cache miss.
 
 
-## Is there an even more generic version of functioon equivalence?
+## Is there a more general way to detect a "meaningful" change is?
 
 A natural question after using the AST to compare two functions is whether this
-is the most generic way to do the comparison. For example, we can define a
-function in two ways that produce the same result
+method also redefines a function too often, much like our source code comparison
+method was too strict with its understanding of what a "meaningful" change was.
+Is there a more general definition of a "meaningful" change that we should be
+looking for? 
+
+One more general definition is if our original function and its redefinition
+always return the same output for a given input, then we can consider no
+meaningful change has been made in the redefinition. For example, we can define
+a function in two ways that produce the same result.
 
 ```python
 def definition_one(a: int) -> int:
@@ -255,30 +265,67 @@ def definition_two(a: int) -> int:
     return 5 + a
 ```
 
-These functions are equivalent in terms of how the inputs map to the outputs, so
-in some manner we can say that the [functions are
-equal](https://en.wikipedia.org/wiki/Extensionality). However, in general it is
-difficult to determine if two functions are equivalent except for in very
-specific cases, especially in languages such as Python[^3]. One could attempt to
-recognize some ASTs as equivalent through rules such as `a + b` is the same as
-`b + a`, but I believe that these types of checks are not useful in practice.
-We are far more often making computationally meaningful changes to a function
-instead of changes that preserve the exact computation.
+Since these two definitions should generate the same cache, we can consider them
+equivalent. The  This definition of equality is called [function
+extensionality](https://en.wikipedia.org/wiki/Extensionality): if for all inputs
+$x$ we can show that, for two functions $f$ and $g$ that $f(x) = g(x)$, then we
+can say that $f$ and $g$ are extensionally equal. Our AST comparison we used for
+function equivalence was an _intensional equality_: two functions were equal if
+they were syntactically equal for a given definition of syntaxes being equal. In
+this case, we defined the syntaxes as being equal if the AST was the same.
 
-[^3]: There are some programming languages such as
+Function extensionality seems to be a good way to decide if two functions are
+equivalent, so why did we not use that? Well there are two main reasons I can
+think of. The simpler problem is that if we redefine the function to be far more
+computationally efficient, then we would be ignoring this more efficient
+definition since the input/output mapping is the same.
+
+More importantly though, in general it is difficult to determine if two
+functions are extensionally equivalent except for in very specific cases,
+especially in languages such as Python[^4].  One could attempt to recognize some
+ASTs as equivalent through rules that recognize some equivalent transformations.
+For example, a rule could detect that `a + b` is the same as `b + a`. It would
+be difficult to come up with a set of rules that encapsulated the right
+definition of a meaningful difference between two ASTs, likely taking far more
+time than just rerunning the expensive computation. In addition, I would argue
+that when we edit code that changes the AST that we are usually making
+meaningful changes, so we are unlikely to redfine a function more than we really
+want to in practice.
+
+[^4]: There are some programming languages such as
       [Dhall](https://dhall-lang.org/) which have a more generic way of comparing
       functions through strong normalization.
+
+Should one really want to extend the definition of equality, then
+[Satisfiability modulo theories
+(SMT)](https://en.wikipedia.org/wiki/Satisfiability_modulo_theories)  solvers
+can be used to symbolically reason about programs. Using such tools, one can
+determine equality of two functions by asking if there is some [symbolic
+assignment](https://en.wikipedia.org/wiki/Symbolic_execution) applied to both
+functions returns an unequal result. Tools such as
+[Crux](https://crux.galois.com/) from Galois or the work from the [Languages,
+Systems, and Data Lab @ UCSC](https://lsd.ucsc.edu/) use this technique to prove
+that a function implements a certain specification. Normal testing is
+insufficient in this case as it is often not possible to try every input to a
+function, meaning it is possible to miss a bug arising from an edge case.[^5]
+
+[^5]: Thanks Patrick Redmond for suggesting expanding the section on ways to
+      evaluate function equivalence.
 
 
 ## Should we do this?
 
 This approach to preserving a cache is definitely a hack: we are altering how
-functions are assigned to a global namespace. One should not use technique in
-actual production code. However, for prototyping in notebooks this method
-enables us to quickly enable decorators with state (such as `cache`) without
-trying a more canonical solution such as persistent storage. I personally use
-this method in notebooks and then delete the `define_once` decorator once the
-code is moved into a module.
+functions are assigned to a global namespace. Anytime code that pulls out the
+`ast` module, the `inspect` module, or the `globals` function is likely doing
+something that is probably gross—if we are using all three, then we should
+definitely rethink what we are doing! This idea should not be used in  actual
+production code.
+
+However, for prototyping in notebooks this method enables us to quickly enable
+decorators with state (such as `cache`) without trying a more canonical solution
+such as persistent storage. I personally use this method in notebooks and then
+delete the `define_once` decorator once the code is moved into a module.
 
 
 ## Comments, questions?
@@ -286,13 +333,14 @@ code is moved into a module.
 If you have any comments or questions, feel free to do one of the following.
 
 - Contact me at my email, which is this web address with the `.` after ryan replaced with an `@`.
-- Open an [issue on my github page](https://github.com/ryanorendorff/ryanorendorff.github.io).
+- Start a [discussion on my github page](https://github.com/ryanorendorff/ryanorendorff.github.io/discussions).
 - Say hi on [LinkedIn](https://www.linkedin.com/in/ryan-orendorff-153a45ba/)
 
 
 ## Acknowledgements
 
-I would like to thank Spencer Poff for reviewing drafts of this article.
+I would like to thank [Patrick Redmond](https://curious.software/plr/) and
+[Spencer Poff](http://spencerpoff.com/) for reviewing drafts of this article.
 
 
 ## Want to run the code in this blog post?
