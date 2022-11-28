@@ -36,11 +36,18 @@ def long_running_notebook_function(*args, **kwargs):
 We use this new function with reckless abandon in our code, and it significantly
 reduce the time it takes a cell in the notebook to run. At some point we want to
 rerun everything in the notebook (to say regenerate some plots with new
-`matplotlib.rcParams` settings), and we use the "Run All Cells" menu item
+`matplotlib.rcParams` settings), and we use the "Run All Cells"[^2] menu item
+
+[^2]: There is also a "Restart and Run All Cells" menu item, which reboots the
+      Jupyter kernel and then runs all the cells. We are going to be looking
+      only at reducing function runtime with the current kernel, although one
+      could modify this post to work across kernel reboots using a on-disk
+      persistent cache.
 
 ...
 
-and it now takes _forever_ to run the same cells that. What happened?!
+and it now takes _forever_ to run the same cells that were executing quickly
+before. What happened?!
 
 
 ## Functions are redefined every time a cell is run
@@ -90,10 +97,10 @@ cell is run again. Conveniently, the `globals()` dictionary gives us access to
 the global namespace, enabling us to see if a function with a given name already
 exists and hold onto the original definition instead of the new (likely
 equivalent) definition. The name of a function can be looked up through the
-`__name__` property, so we can define the following decorator[^2] to find the
+`__name__` property, so we can define the following decorator[^3] to find the
 existing function and keep it.
 
-[^2]: A decorator is just a higher order function (a function that takes another
+[^3]: A decorator is just a higher order function (a function that takes another
       function as an argument).
 
 ```python
@@ -109,9 +116,9 @@ def define_once_first_try(f):
 ```
 
 Now we can decorate our function with `define_once_first_try` once it is
-memoized[^3] to prevent subsequent reruns of a cell from clearing out our cache.
+memoized[^4] to prevent subsequent reruns of a cell from clearing out our cache.
 
-[^3]: The order of decorators actually does not matter; `cache` is smart enough
+[^4]: The order of decorators actually does not matter; `cache` is smart enough
       to notice that a cache for the specific function already exists.
 
 ```python
@@ -282,7 +289,7 @@ definition since the input/output mapping is the same.
 
 More importantly though, in general it is difficult to determine if two
 functions are extensionally equivalent except for in very specific cases,
-especially in languages such as Python[^4]. One could attempt to recognize some
+especially in languages such as Python[^5]. One could attempt to recognize some
 ASTs as equivalent through rules that recognize some equivalent transformations.
 For example, a rule could detect that `a + b` is the same as `b + a`. It would
 be difficult to come up with a set of rules that encapsulated the right
@@ -292,7 +299,7 @@ that when we edit code that changes the AST that we are usually making
 meaningful changes, so we are unlikely to redfine a function more than we really
 want to in practice.
 
-[^4]: There are some programming languages such as
+[^5]: There are some programming languages such as
       [Dhall](https://dhall-lang.org/) which have a more generic way of comparing
       functions through strong normalization.
 
@@ -309,9 +316,9 @@ that a function implements a certain specification, such as [producing
 equivalent outputs as a less efficient
 function](https://www.youtube.com/watch?v=dCNQFHjgotU). Normal testing is
 insufficient in this case as it is often not possible to try every input to a
-function, meaning it is possible to miss a bug arising from an edge case.[^5]
+function, meaning it is possible to miss a bug arising from an edge case.[^6]
 
-[^5]: Thanks Patrick Redmond for suggesting expanding the section on ways to
+[^6]: Thanks Patrick Redmond for suggesting expanding the section on ways to
       evaluate function equivalence.
 
 
