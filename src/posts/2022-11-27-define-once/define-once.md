@@ -3,11 +3,11 @@ title: Define a python function once and for all
 subtitle: A terrible hack that ends up being surprisingly useful
 ---
 
-Sometimes when we have a function that takes a long time to run, and we would
-really rather avoid running the function more often than absolutely necessary.
-Luckily, if our function is a pure function[^1], then we can
+Sometimes we have a function that takes a long time to run, and we would really
+rather avoid running the function more often than absolutely necessary. If our
+function is pure[^1], then we can
 [memoize](https://en.wikipedia.org/wiki/Memoization) the result of calling the
-function using the `cache` function.
+function using `cache` to alleviate some of the runtime woes.
 
 [^1]: The function's inputs and outputs form a relation and the function does
       no side effects such as print out to standard out.
@@ -89,7 +89,7 @@ function with the cache attached and ignore the new function created when the
 cell is run again. Conveniently, the `globals()` dictionary gives us access to
 the global namespace, enabling us to see if a function with a given name already
 exists and hold onto the original definition instead of the new (likely
-equivalent) definition.  The name of a function can be looked up through the
+equivalent) definition. The name of a function can be looked up through the
 `__name__` property, so we can define the following decorator[^2] to find the
 existing function and keep it.
 
@@ -153,11 +153,11 @@ that we would not need to redefine a function, but alas we are human. What the
 meaningfully changes_, and if it does, to accept the new definition
 (invalidating the old cache in the process).
 
-We can get a function's source code using the `inspect.getsource` function from
-the standard library and use the source code to see if the function changed in a
-meaningful way. If the code has not changed, then we should return the original
-pointer to the function (with the cache attached); otherwise we should use the
-new function definition.
+To detect if the function has changed, we can get its source code using
+`inspect.getsource` from the standard library and check if the source has
+changed between definitions. If the code has not changed, then we should return
+the pointer to the original function (with the cache attached); otherwise we
+should use the new function definition.
 
 ```python
 import inspect
@@ -184,8 +184,8 @@ function whenever we do not alter the function. Great!
 With our new define once function, we get back to our task (_sheesh, took a
 while_). After a bit of coding and finalizing our work, we decide to run the
 notebook through an autoformatter like [`black`](https://github.com/psf/black),
-add some comments,  and rerun all the cells. But now our code is taking a long
-time to run again!  What's the problem now?
+add some comments, and rerun all the cells. But now our code is taking a long
+time to run again! What's the problem now?
 
 
 ## Source code includes formatting details that don't affect how a function runs
@@ -200,7 +200,7 @@ code nonetheless.
 
 What we would really like is a representation of only the computational bits of
 the function, which we could then use to compare the existing implementation of
-a function from the redefinition from a function.  Luckily we can extract the
+a function from the redefinition from a function. Luckily we can extract the
 [abstract syntax tree (AST)](https://en.wikipedia.org/wiki/Abstract_syntax_tree)
 for a function in python using the `ast` module in the standard library. The AST
 is the data structure that represents the program after it has been parsed from
@@ -266,7 +266,7 @@ def definition_two(a: int) -> int:
 ```
 
 Since these two definitions should generate the same cache, we can consider them
-equivalent. The  This definition of equality is called [function
+equivalent. This definition of equality is called [function
 extensionality](https://en.wikipedia.org/wiki/Extensionality): if for all inputs
 $x$ we can show that, for two functions $f$ and $g$ that $f(x) = g(x)$, then we
 can say that $f$ and $g$ are extensionally equal. Our AST comparison we used for
@@ -282,7 +282,7 @@ definition since the input/output mapping is the same.
 
 More importantly though, in general it is difficult to determine if two
 functions are extensionally equivalent except for in very specific cases,
-especially in languages such as Python[^4].  One could attempt to recognize some
+especially in languages such as Python[^4]. One could attempt to recognize some
 ASTs as equivalent through rules that recognize some equivalent transformations.
 For example, a rule could detect that `a + b` is the same as `b + a`. It would
 be difficult to come up with a set of rules that encapsulated the right
@@ -307,7 +307,7 @@ functions that returns an unequal result. Tools such as
 Systems, and Data Lab @ UCSC](https://lsd.ucsc.edu/) use this technique to prove
 that a function implements a certain specification, such as [producing
 equivalent outputs as a less efficient
-function](https://www.youtube.com/watch?v=dCNQFHjgotU).  Normal testing is
+function](https://www.youtube.com/watch?v=dCNQFHjgotU). Normal testing is
 insufficient in this case as it is often not possible to try every input to a
 function, meaning it is possible to miss a bug arising from an edge case.[^5]
 
@@ -321,7 +321,7 @@ This approach to preserving a cache is definitely a hack: we are altering how
 functions are assigned to a global namespace. Anytime code that pulls out the
 `ast` module, the `inspect` module, or the `globals` function is likely doing
 something that is probably gross—if we are using all three, then we should
-definitely rethink what we are doing! This idea should not be used in  actual
+definitely rethink what we are doing! This idea should not be used in actual
 production code.
 
 However, for prototyping in notebooks this method enables us to quickly enable
