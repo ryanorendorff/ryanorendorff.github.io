@@ -302,10 +302,12 @@ Should one really want to extend the definition of equality, then
 can be used to symbolically reason about programs. Using such tools, one can
 determine equality of two functions by asking if there is some [symbolic
 assignment](https://en.wikipedia.org/wiki/Symbolic_execution) applied to both
-functions returns an unequal result. Tools such as
+functions that returns an unequal result. Tools such as
 [Crux](https://crux.galois.com/) from Galois or the work from the [Languages,
 Systems, and Data Lab @ UCSC](https://lsd.ucsc.edu/) use this technique to prove
-that a function implements a certain specification. Normal testing is
+that a function implements a certain specification, such as [producing
+equivalent outputs as a less efficient
+function](https://www.youtube.com/watch?v=dCNQFHjgotU).  Normal testing is
 insufficient in this case as it is often not possible to try every input to a
 function, meaning it is possible to miss a bug arising from an edge case.[^5]
 
