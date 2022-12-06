@@ -42,20 +42,6 @@ td.lineNumbers {
 }
 td.sourceCode { padding-left: 5px;}
 
-.sourceCode span.kw { color: var(--nord9); font-weight: bold; }
-.sourceCode span.dt { color: var(--nord9); }
-.sourceCode span.dv { color: var(--nord15); }
-.sourceCode span.bn { color: #FFFFFF; }
-.sourceCode span.fl { color: #FFFFFF; }
-.sourceCode span.ch { color: #4070a0; }
-.sourceCode span.st { color: #4070a0; }
-.sourceCode span.co { color: var(--nord10); }
-.sourceCode span.ot { color: var(--nord9); }
-.sourceCode span.al { color: var(--nord11); font-weight: bold; }
-.sourceCode span.fu { color: var(--nord8); }
-.sourceCode span.re { }
-.sourceCode span.er { color: var(--nord11); font-weight: bold; }
-
 a {
     color: var(--nord12);
     text-decoration: none;
