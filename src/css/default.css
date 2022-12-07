@@ -129,6 +129,10 @@ hr {
     margin-right: 1pt;
 }
 
+.footnotes > ol:nth-child(2) {
+    padding-left: 20px;
+}
+
 .quiet {
     color: #666;
     font-size: 11pt
