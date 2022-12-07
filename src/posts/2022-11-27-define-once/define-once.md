@@ -58,7 +58,7 @@ in the running notebook kernel. Put another way, we can think of running a cell
 as the following pseudocode.
 
 ```python
-# Before running a cell, we can find find all globally defined
+# Before running a cell, we can find all globally defined
 # variables in the `globals()` dictionary. This will include
 # a pointer to all of our defined functions, plus a bunch of
 # stuff defined by the Python kernel/Jupyter notebook internals.
@@ -251,7 +251,7 @@ And with this version of `define_once` we can finally
 - are immune to syntactic changes causing a cache miss.
 
 
-## Is there a more general way to detect a "meaningful" change is?
+## Is there a more general way to detect a "meaningful" change?
 
 A natural question after using the AST to compare two functions is whether this
 method also redefines a function too often, much like our source code comparison
@@ -343,7 +343,7 @@ If you have any comments or questions, feel free to do one of the following.
 
 - Contact me at my email, which is this web address with the `.` after ryan replaced with an `@`.
 - Start a [discussion on my github page](https://github.com/ryanorendorff/ryanorendorff.github.io/discussions).
-- Say hi on [LinkedIn](https://www.linkedin.com/in/ryan-orendorff-153a45ba/)
+- Say hi on [LinkedIn](https://www.linkedin.com/in/ryan-orendorff/)
 
 
 ## Acknowledgements
