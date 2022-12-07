@@ -12,6 +12,17 @@ body {
   text-justify: inter-word;
 }
 
+/* From https://stackoverflow.com/questions/1530685/html-sup-tag-affecting-line-height-how-to-make-it-consistent */
+sup {
+    line-height: 0;
+
+    /* The following rules (or similar) likely come from browser
+     * style and are not needed
+     */
+    font-size: 0.83em;
+    vertical-align: super;
+}
+
 pre.sourceCode {
     background-color: var(--nord1);
     padding: 6px 12pt;
@@ -176,7 +187,7 @@ hr {
     padding: 0 5%;
 
     /* To avoid resizing of random text on an iPhone */
-    -webkit-text-size-adjust: none;
+    -webkit-text-size-adjust: 100%;
   }
   code {
       font-size: 10pt;
