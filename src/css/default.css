@@ -10,6 +10,7 @@ body {
   font-style: normal;
   text-align: justify;
   text-justify: inter-word;
+  line-height: 1.3;
 }
 
 /* From https://stackoverflow.com/questions/1530685/html-sup-tag-affecting-line-height-how-to-make-it-consistent */
@@ -28,6 +29,7 @@ pre.sourceCode {
     padding: 6px 12pt;
     border-radius: 5px;
     overflow-x: auto;
+    line-height: 1.1;
 }
 
 code {
