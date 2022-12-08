@@ -50,7 +50,7 @@ and it now takes _forever_ to run the same cells that were executing quickly
 before. What happened?!
 
 
-## Functions are redefined every time a cell is run
+# Functions are redefined every time a cell is run
 
 When using a notebook, the code in a cell is rerun every time we execute that
 cell. The definitions in the cell being run are assigned to the global namespace
@@ -88,7 +88,7 @@ cell, a _new function with the same name_ gets created and replaces the existing
 function in the global namespace. We lose track of our first cached function!
 
 
-## But all is not lost!
+# But all is not lost!
 
 For the `cache` decorator to working even after running the cell that defines
 the desired function multiple times, we need to keep track of the original
@@ -150,7 +150,7 @@ that need this function. But we are getting the same resulting buggy results as
 before. Hmm, what is going on?
 
 
-## Since we only define a function once, we can't modify it!
+# Since we only define a function once, we can't modify it!
 
 Our strategy for preventing a function from being redefined is a tad too strong:
 it only keeps track of the first definition of the code, meaning we can never
@@ -195,7 +195,7 @@ add some comments, and rerun all the cells. But now our code is taking a long
 time to run again! What's the problem now?
 
 
-## Source code includes formatting details that don't affect how a function runs
+# Source code includes formatting details that don't affect how a function runs
 
 Our new problem is that the function source code includes both the instructions
 of what to run and the details required to make the code readable to humans.
@@ -251,7 +251,7 @@ And with this version of `define_once` we can finally
 - are immune to syntactic changes causing a cache miss.
 
 
-## Is there a more general way to detect a "meaningful" change?
+# Is there a more general way to detect a "meaningful" change?
 
 A natural question after using the AST to compare two functions is whether this
 method also redefines a function too often, much like our source code comparison
@@ -322,7 +322,7 @@ function, meaning it is possible to miss a bug arising from an edge case.[^6]
       evaluate function equivalence.
 
 
-## Should we do this?
+# Should we do this?
 
 This approach to preserving a cache is definitely a hack: we are altering how
 functions are assigned to a global namespace. Anytime code that pulls out the
