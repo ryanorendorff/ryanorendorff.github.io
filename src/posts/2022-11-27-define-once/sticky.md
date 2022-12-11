@@ -1,33 +1,30 @@
 ---
-title: Define a python function once and for all
+title: Make a python function definition stick!
 subtitle: A terrible hack that ends up being surprisingly useful
 ---
 
-Sometimes we have a function that takes a long time to run, and we would really
-rather avoid running the function more often than absolutely necessary. If our
-function is pure[^1], then we can
-[memoize](https://en.wikipedia.org/wiki/Memoization) the result of calling the
-function using `cache` to alleviate some of the runtime woes.
-
-[^1]: The function's inputs and outputs form a relation and the function does
-      no side effects such as print out to standard out.
+Sometimes we have a function that takes a while, and we want to use just-in-time
+compilation to make the function faster.
+[Numba](https://numba.readthedocs.io/en/stable/user/jit.html) will compile the
+function lazily in this case: only when it is first called will the function be
+optimized.
 
 ```python
-from functools import cache
+from numba import jit
 
-@cache
-def this_function_takes_forever(*args, **kwargs):
+@jit
+def function_that_takes forever(*args, **kwargs):
     # do some long computation
     return result
 ```
 
 This is an excellent way to reduce compute time when making a repeated calls to
-a function with the same inputs. Excited with this technique, we implement some
-long running function in a [Jupyter notebook](https://jupyter.org/) and slap the
-`cache` decorator on top to memoize the results.
+slow function. Excited with this technique, we implement some long running
+function in a [Jupyter notebook](https://jupyter.org/) and slap the `jit`
+decorator on top.
 
 ```python
-@cache
+@jit
 def long_running_notebook_function(*args, **kwargs):
     # Now our notebook will no longer take forever to run!
     return result
@@ -36,18 +33,10 @@ def long_running_notebook_function(*args, **kwargs):
 We use this new function with reckless abandon in our code, and it significantly
 reduce the time it takes a cell in the notebook to run. At some point we want to
 rerun everything in the notebook (to say regenerate some plots with new
-`matplotlib.rcParams` settings), and we use the "Run All Cells"[^2] menu item
+`matplotlib.rcParams` settings), and we accidentally press "Shift-Enter" over
+the cell defining our function...
 
-[^2]: There is also a "Restart and Run All Cells" menu item, which reboots the
-      Jupyter kernel and then runs all the cells. We are going to be looking
-      only at reducing function runtime with the current kernel, although one
-      could modify this post to work across kernel reboots using a on-disk
-      persistent cache.
-
-...
-
-and it now takes _forever_ to run the same cells that were executing quickly
-before. What happened?!
+and it now takes _forever_ to run the function the first time.  What happened?!
 
 
 # Functions are redefined every time a cell is run
@@ -83,61 +72,56 @@ after = globals()
 # string along with the associated function pointers created by `exec`.
 ```
 
-The reason the `cache` decorator does not seem to work is that when we run a
-cell, a _new function with the same name_ gets created and replaces the existing
-function in the global namespace. We lose track of our first cached function!
+The reason the `jit` decorator does not seem to work is that when we run a cell,
+a _new function with the same name_ gets created and replaces the existing
+function in the global namespace. We lose track of our first jitted function!
 
 
 # But all is not lost!
 
-For the `cache` decorator to working even after running the cell that defines
+For the `jit` decorator to working even after running the cell that defines
 the desired function multiple times, we need to keep track of the original
-function with the cache attached and ignore the new function created when the
+function with the jit attached and ignore the new function created when the
 cell is run again. Conveniently, the `globals()` dictionary gives us access to
 the global namespace, enabling us to see if a function with a given name already
 exists and hold onto the original definition instead of the new (likely
 equivalent) definition. The name of a function can be looked up through the
-`__name__` property, so we can define the following decorator[^3] to find the
+`__name__` property, so we can define the following decorator[^1] to find the
 existing function and keep it.
 
-[^3]: A decorator is just a higher order function (a function that takes another
+[^1]: A decorator is just a higher order function (a function that takes another
       function as an argument).
 
 ```python
-def define_once_first_try(f):
-    if f.__name__ in globals().keys():
-        # Return the original function, ignoring the new
-        # definition of `f`.
-        return globals()[f.__name__]
-    
-    # Otherwise, the function does not already exist and we should
-    # assign this new function to the global namespace.
-    return f 
+def sticky_definition_first_try(f):
+    # Here we try to find the function in the global
+    # namespace. If it does not exist, return the 
+    # newly defined function.
+    return globals().get(f.__name__, f)
 ```
 
-Now we can decorate our function with `define_once_first_try` once it is
-memoized[^4] to prevent subsequent reruns of a cell from clearing out our cache.
+Now we can decorate our function with `sticky_definition_first_try` once it is
+jitted to prevent subsequent reruns of a cell from clearing out our optimized
+function.
 
-[^4]: The order of decorators actually does not matter; `cache` is smart enough
-      to notice that a cache for the specific function already exists.
 
 ```python
-@define_once_first_try
-@cache
+@sticky_definition_first_try
+@jit
 def long_running_notebook_function(*args, **kwargs):
     # Now our notebook will no longer take forever to run!
     return result
 ```
 
-Now we can go back to merrily coding in our notebook, using "Run All Cells"
+Now we can go back to merrily coding in our notebook, using Shift-Enter
 recklessly without worrying about recomputing expensive results.
 
 At some point, we realize our `long_running_notebook_function` has a bug. No
 problem, we can go back and fix the function and go back to the task at hand.
 
 ```python
-@define_once_first_try
-@cache
+@sticky_definition_first_try
+@jit
 def long_running_notebook_function(*args, **kwargs):
     # Now our notebook will no longer take forever to run!
     
@@ -156,54 +140,9 @@ Our strategy for preventing a function from being redefined is a tad too strong:
 it only keeps track of the first definition of the code, meaning we can never
 alter that definition. It would be amazing if we could write perfect code so
 that we would not need to redefine a function, but alas we are human. What the
-`define_once` function should really be doing is detecting _if the function
+`sticky_definition` function should really be doing is detecting _if the function
 meaningfully changes_, and if it does, to accept the new definition
-(invalidating the old cache in the process).
-
-To detect if the function has changed, we can get its source code using
-`inspect.getsource` from the standard library and check if the source has
-changed between definitions. If the code has not changed, then we should return
-the pointer to the original function (with the cache attached); otherwise we
-should use the new function definition.
-
-```python
-import inspect
-
-def define_once_second_try(f):
-    if f.__name__ in globals().keys():
-        f_source = inspect.getsource(f)
-        global_f_source = inspect.getsource(globals()[f.__name__])
-
-        if f_source == global_f_source:
-            # Return the original function, ignoring the new definition
-            # of `f` ONLY IF the source code is unchanged.
-            return globals()[f.__name__]
-    
-    # Otherwise, the function does not already exist with the same
-    # source code and we should assign the function to the
-    # global namespace.
-    return f 
-```
-
-With our second attempt, we can fix any bugs in our code and keep the cached
-function whenever we do not alter the function. Great!
-
-With our new define once function, we get back to our task (_sheesh, took a
-while_). After a bit of coding and finalizing our work, we decide to run the
-notebook through an autoformatter like [`black`](https://github.com/psf/black),
-add some comments, and rerun all the cells. But now our code is taking a long
-time to run again! What's the problem now?
-
-
-# Source code includes formatting details that don't affect how a function runs
-
-Our new problem is that the function source code includes both the instructions
-of what to run and the details required to make the code readable to humans.
-Things such as [tabs versus spaces](https://www.youtube.com/watch?v=SsoOG6ZeyUI)
-don't change what the function actually does, but changes what the program looks
-like on our computer screens. We can make changes to a function such as adding
-comments that do not _meaningfully_ change a function, but change the source
-code nonetheless.
+(invalidating the old jit in the process).
 
 What we would really like is a representation of only the computational bits of
 the function, which we could then use to compare the existing implementation of
@@ -213,42 +152,78 @@ for a function in python using the `ast` module in the standard library. The AST
 is the data structure that represents the program after it has been parsed from
 its text origins, retaining only the computationally relevant bits.
 
-We can define our `define_once` function to compare the AST of a functions and
+We can define our `sticky_definition` function to compare the AST of a functions and
 its redefinition and only accept the redefinition if it does something
-meaningfully different.
+meaningfully different[^2] (with generous help from StackOverflow).
+
+[^2]: See references for examples of performing this type of AST comparison.
 
 ```python
-def function_to_ast_string(f):
-    # Get the AST in tree form
-    node = ast.parse(inspect.getsource(f))
-    
-    # Convert to string. There is no comparison function for AST
-    # nodes in the standard library, but the function to convert
-    # a given AST to a string representation is deterministic
-    # (and each AST has a unique string).
-    return ast.dump(node)
+import ast
+import inspect
+import hashlib
 
-def define_once(f):
-    if f.__name__ in globals().keys():
-        f_ast = function_to_ast_string(f)
-        global_f_ast = function_to_ast_string(globals()[f.__name__])
+# From https://stackoverflow.com/questions/49998161/how-can-i-hash-the-body-of-a-python-function
+# with light editing
+def _remove_docstring(node):
+    if not (isinstance(node, ast.FunctionDef) or
+            isinstance(node, ast.ClassDef)):
+        return
 
-        if f_ast == global_f_ast:
-            # Return the original function, ignoring the new
-            # definition of `f` ONLY IF the AST is unchanged.
-            return globals()[f.__name__]
+    if len(node.body) != 0:
+        docstr = node.body[0]
+        if (isinstance(docstr, ast.Expr) and
+            isinstance(docstr.value, ast.Str):
+            node.body.pop(0)
+
+
+# From https://stackoverflow.com/questions/49998161/how-can-i-hash-the-body-of-a-python-function
+# with light editing
+def hash_function(func):
+    func_str = inspect.getsource(func)
+    module = ast.parse(func_str)
+
+    assert (len(module.body) == 1 and
+            isinstance(module.body[0], ast.FunctionDef))
     
-    # Otherwise, the function does not already exist with the same
-    # AST and we should assign the function to the global namespace.
-    return f 
+    # Clear all the doc strings
+    for node in ast.walk(module):
+        _remove_docstring(node)
+
+    # Convert the ast to a string for hashing
+    ast_str = ast.dump(module, annotate_fields=False)
+
+    # Produce the hash
+    fhash = hashlib.sha256(ast_str)
+    result = fhash.hexdigest()
+    return result
+
+
+def sticky_definition(f):
+    # function was not defined before, just return the new function.
+    if f.__name__ not in globals():
+        return f
+
+    global_f = globals()[f.__name__]
+
+    if hash_function(f) == hash_function(global_f)
+        # Return the original function, ignoring the new definition
+        # of `f` ONLY IF the source code is unchanged.
+        return global_f
+    else:
+        # Otherwise, the function does not already exist with the same
+        # source code and we should assign the function to the
+        # global namespace.
+        return f 
 ```
 
-And with this version of `define_once` we can finally 
+And with this version of `sticky_definition` we can
 
-- use the advantages of a stateful decorator like `cache` in our Python
+- use the advantages of a stateful decorator like `jit` in our Python
   notebook, even after rerunning a cell,
-- reduce the number of cases where we have no cached result, and
-- are immune to syntactic changes causing a cache miss.
+- reduce the number of cases where we have no jitted result, and
+- are immune to syntactic changes like docstrings or comments causing a jit
+  miss.
 
 
 # Is there a more general way to detect a "meaningful" change?
@@ -272,7 +247,7 @@ def definition_two(a: int) -> int:
     return 5 + a
 ```
 
-Since these two definitions should generate the same cache, we can consider them
+Since these two definitions should generate the same jit, we can consider them
 equivalent. This definition of equality is called [function
 extensionality](https://en.wikipedia.org/wiki/Extensionality): if for all inputs
 $x$ we can show that, for two functions $f$ and $g$ that $f(x) = g(x)$, then we
@@ -289,7 +264,7 @@ definition since the input/output mapping is the same.
 
 More importantly though, in general it is difficult to determine if two
 functions are extensionally equivalent except for in very specific cases,
-especially in languages such as Python[^5]. One could attempt to recognize some
+especially in languages such as Python[^3]. One could attempt to recognize some
 ASTs as equivalent through rules that recognize some equivalent transformations.
 For example, a rule could detect that `a + b` is the same as `b + a`. It would
 be difficult to come up with a set of rules that encapsulated the right
@@ -299,7 +274,7 @@ that when we edit code that changes the AST that we are usually making
 meaningful changes, so we are unlikely to redfine a function more than we really
 want to in practice.
 
-[^5]: There are some programming languages such as
+[^3]: There are some programming languages such as
       [Dhall](https://dhall-lang.org/) which have a more generic way of comparing
       functions through strong normalization.
 
@@ -316,15 +291,15 @@ that a function implements a certain specification, such as [producing
 equivalent outputs as a less efficient
 function](https://www.youtube.com/watch?v=dCNQFHjgotU). Normal testing is
 insufficient in this case as it is often not possible to try every input to a
-function, meaning it is possible to miss a bug arising from an edge case.[^6]
+function, meaning it is possible to miss a bug arising from an edge case.[^4]
 
-[^6]: Thanks Patrick Redmond for suggesting expanding the section on ways to
+[^4]: Thanks Patrick Redmond for suggesting expanding the section on ways to
       evaluate function equivalence.
 
 
 # Should we do this?
 
-This approach to preserving a cache is definitely a hack: we are altering how
+This approach to preserving a jit is definitely a hack: we are altering how
 functions are assigned to a global namespace. Anytime code that pulls out the
 `ast` module, the `inspect` module, or the `globals` function is likely doing
 something that is probably gross—if we are using all three, then we should
@@ -332,9 +307,20 @@ definitely rethink what we are doing! This idea should not be used in actual
 production code.
 
 However, for prototyping in notebooks this method enables us to quickly enable
-decorators with state (such as `cache`) without trying a more canonical solution
+decorators with state (such as `jit`) without trying a more canonical solution
 such as persistent storage. I personally use this method in notebooks and then
-delete the `define_once` decorator once the code is moved into a module.
+delete the `sticky_definition` decorator once the code is moved into a module.
+
+
+# References
+
+This type of idea has been done a few different times in the public literature.
+
+- There is a [python package](https://github.com/omegacen/python-compare-ast)
+  for comparing ASTs.
+- There is a
+  [thesis](https://repositorio.uniandes.edu.co/bitstream/handle/1992/44754/u830947.pdf?sequence=1)
+  discussing comparing many more methods for comparing Python ASTs.
 
 
 ## Comments, questions?
@@ -354,9 +340,9 @@ I would like to thank [Patrick Redmond](https://curious.software/plr/) and
 
 ## Want to run the code in this blog post?
 
-The code defined in this post is available in a [Jupyter
-notebook](https://github.com/ryanorendorff/ryanorendorff.github.io/blob/main/src/posts/2022-11-27-define-once/define-once.ipynb).
 A python environment with Jupyter notebook can be spun up using [nix
 shell](https://nixos.wiki/wiki/Development_environment_with_nix-shell) in this
 posts [root
-directory](https://github.com/ryanorendorff/ryanorendorff.github.io/blob/main/src/posts/2022-11-27-define-once/define-once.ipynb)
+directory](https://github.com/ryanorendorff/ryanorendorff.github.io/blob/main/src/posts/2022-11-27-define-once).
+Play around with different definitions for comparing functions and see what
+kinds of tradeoffs you encounter.
