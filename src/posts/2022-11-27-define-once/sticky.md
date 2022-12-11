@@ -20,69 +20,68 @@ def function_that_takes forever(*args, **kwargs):
 
 This is an excellent way to reduce compute time when making a repeated calls to
 slow function. Excited with this technique, we implement some long running
-function in a [Jupyter notebook](https://jupyter.org/) and slap the `jit`
-decorator on top.
+function in some type of Python REPL (my favorite at the moment is ptpython) we
+are analyzing data in and slap the `jit` decorator on top.
 
 ```python
 @jit
-def long_running_notebook_function(*args, **kwargs):
+def long_running_repl_function(*args, **kwargs):
     # Now our notebook will no longer take forever to run!
     return result
 ```
 
 We use this new function with reckless abandon in our code, and it significantly
-reduce the time it takes a cell in the notebook to run. At some point we want to
-rerun everything in the notebook (to say regenerate some plots with new
-`matplotlib.rcParams` settings), and we accidentally press "Shift-Enter" over
-the cell defining our function...
+reduce the time it takes our code to run in our REPL. At some point we press the
+up arrow to get to our old blocks of code, rerun then with enter, and...
 
 and it now takes _forever_ to run the function the first time.  What happened?!
 
 
-# Functions are redefined every time a cell is run
+# Functions are redefined every time
 
-When using a notebook, the code in a cell is rerun every time we execute that
-cell. The definitions in the cell being run are assigned to the global namespace
-in the running notebook kernel. Put another way, we can think of running a cell
-as the following pseudocode.
+When using a REPL, the code in a block is rerun every time we execute that
+block. The definitions in the block being run are assigned to the global
+namespace in the running python interpreter. Put another way, we can think of
+running a block as the following pseudocode.
 
 ```python
-# Before running a cell, we can find all globally defined
+# Before running a block, we can find all globally defined
 # variables in the `globals()` dictionary. This will include
-# a pointer to all of our defined functions, plus a bunch of
-# stuff defined by the Python kernel/Jupyter notebook internals.
+# a pointer to all of our defined functions, plus potentially a
+# bunch of stuff that our REPL may keep track of like `In` and
+# `Out` blocks in something like ipython or ptpython.
 before = globals()
 
-# Take the source code in the cell as a string called `cell_str`.
-# Anything defined in the cell string will be merged into the 
+# Take the source code in the block as a string called `block_str`.
+# Anything defined in the block string will be merged into the 
 # `globals()` dictionary.
-exec(cell_str)
+exec(block_str)
 
 # The globals dictionary should now be modified with whatever was
-# defined within `cell_str`.
+# defined within `block_str`.
 after = globals()
 
 # The following equation relates the two dictionaries
 # (minus some jupyter bookkeeping)
 #
-#     after = before | top_level_definitions(cell_str)
+#     after = before | top_level_definitions(block_str)
 #
 # where `|` is the dictionary merge operator from Python 3.9 and
 # `top_level_defintions` returns the top level definitions in the
 # string along with the associated function pointers created by `exec`.
 ```
 
-The reason the `jit` decorator does not seem to work is that when we run a cell,
+The reason the `jit` decorator does not seem to work is that when we run a block,
 a _new function with the same name_ gets created and replaces the existing
 function in the global namespace. We lose track of our first jitted function!
 
 
 # But all is not lost!
 
-For the `jit` decorator to working even after running the cell that defines
+For the `jit` decorator to working even after running the block that defines
 the desired function multiple times, we need to keep track of the original
 function with the jit attached and ignore the new function created when the
-cell is run again. Conveniently, the `globals()` dictionary gives us access to
+block is run again. Conveniently, the `globals()` dictionary gives us access to
 the global namespace, enabling us to see if a function with a given name already
 exists and hold onto the original definition instead of the new (likely
 equivalent) definition. The name of a function can be looked up through the
@@ -101,35 +100,35 @@ def sticky_definition_first_try(f):
 ```
 
 Now we can decorate our function with `sticky_definition_first_try` once it is
-jitted to prevent subsequent reruns of a cell from clearing out our optimized
+jitted to prevent subsequent reruns of a block from clearing out our optimized
 function.
 
 
 ```python
 @sticky_definition_first_try
 @jit
-def long_running_notebook_function(*args, **kwargs):
+def long_running_repl_function(*args, **kwargs):
     # Now our notebook will no longer take forever to run!
     return result
 ```
 
-Now we can go back to merrily coding in our notebook, using Shift-Enter
-recklessly without worrying about recomputing expensive results.
+Now we can go back to merrily coding in our REPL without worrying about
+recomputing expensive results.
 
-At some point, we realize our `long_running_notebook_function` has a bug. No
+At some point, we realize our `long_running_repl_function` has a bug. No
 problem, we can go back and fix the function and go back to the task at hand.
 
 ```python
 @sticky_definition_first_try
 @jit
-def long_running_notebook_function(*args, **kwargs):
+def long_running_repl_function(*args, **kwargs):
     # Now our notebook will no longer take forever to run!
     
     # We were missing a constant 5 from our results. Fixed now!
     return result + 5
 ```
 
-We rerun the cell defining `long_running_notebook_function` and all the cells
+We rerun the block defining `long_running_repl_function` and all the blocks
 that need this function. But we are getting the same resulting buggy results as
 before. Hmm, what is going on?
 
@@ -220,7 +219,7 @@ def sticky_definition(f):
 And with this version of `sticky_definition` we can
 
 - use the advantages of a stateful decorator like `jit` in our Python
-  notebook, even after rerunning a cell,
+  REPL, even after rerunning a block,
 - reduce the number of cases where we have no jitted result, and
 - are immune to syntactic changes like docstrings or comments causing a jit
   miss.
@@ -306,10 +305,10 @@ something that is probably gross—if we are using all three, then we should
 definitely rethink what we are doing! This idea should not be used in actual
 production code.
 
-However, for prototyping in notebooks this method enables us to quickly enable
-decorators with state (such as `jit`) without trying a more canonical solution
-such as persistent storage. I personally use this method in notebooks and then
-delete the `sticky_definition` decorator once the code is moved into a module.
+However, for prototyping (including in places like a REPL) this method enables
+us to quickly enable decorators with state (such as `jit`) without trying a
+more canonical solution such as persistent storage. Sometimes coming up with
+that robust saving state challenge can take quite a while in its own right!
 
 
 # References
@@ -340,7 +339,7 @@ I would like to thank [Patrick Redmond](https://curious.software/plr/) and
 
 ## Want to run the code in this blog post?
 
-A python environment with Jupyter notebook can be spun up using [nix
+A python environment can be spun up using [nix
 shell](https://nixos.wiki/wiki/Development_environment_with_nix-shell) in this
 posts [root
 directory](https://github.com/ryanorendorff/ryanorendorff.github.io/blob/main/src/posts/2022-11-27-define-once).
