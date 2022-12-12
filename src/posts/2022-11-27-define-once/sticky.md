@@ -40,9 +40,10 @@ and it now takes _forever_ to run the function the first time.  What happened?!
 # Functions are redefined every time
 
 When using a REPL, the code in a block is rerun every time we execute that
-block. The definitions in the block being run are assigned to the global
-namespace in the running python interpreter. Put another way, we can think of
-running a block as the following pseudocode.
+block. The definitions in the block being run [are assigned to the global
+namespace in the running python
+interpreter](https://www.mikulskibartosz.name/python-memory-management-in-jupyter-notebook/).
+Put another way, we can think of running a block as the following pseudocode.
 
 ```python
 # Before running a block, we can find all globally defined
@@ -315,6 +316,23 @@ that robust saving state challenge can take quite a while in its own right!
 
 This type of idea has been done a few different times in the public literature.
 
+- There are [many](https://stackoverflow.com/a/321334)
+  [ways](https://stackoverflow.com/questions/3948873/prevent-function-overriding-in-python)
+  to
+  [accomplish](https://stackoverflow.com/questions/31700406/how-to-prevent-overwritting-python-built-in-function-by-accident)
+  this
+  [task](https://stackoverflow.com/questions/49998161/how-can-i-hash-the-body-of-a-python-function),
+  including methods that compare [function
+  contents](https://stackoverflow.com/questions/32287885/caching-functions-in-python-to-disk-with-expiration-based-on-version).
+  There are other methods for mucking with [globals lookup inside a
+  function](https://stackoverflow.com/questions/49076566/override-globals-in-function-imported-from-another-module),
+  including [disabling functions deep inside other
+  code](https://stackoverflow.com/questions/10388411/possible-to-globally-replace-a-function-with-a-context-manager-in-python).
+  In general all of these methods should be used _very carefully_ and likely not
+  in production code (as every stack overflow post mentions).
+- In a fascinating twist, one [python bug
+  report](https://bugs.python.org/issue13678) asked for a similar prevention of
+  overriding implemented in Python itself! 
 - There is a [python package](https://github.com/omegacen/python-compare-ast)
   for comparing ASTs.
 - There is a
