@@ -85,7 +85,7 @@ nav a {
 }
 
 header a:hover {
-    color: var(--nord7);
+    color: var(--nord12);
     transition: 0.3s;
 }
 
