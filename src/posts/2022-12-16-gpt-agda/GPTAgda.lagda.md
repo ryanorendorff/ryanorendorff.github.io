@@ -591,8 +591,9 @@ If you have any comments or questions, feel free to do one of the following.
 
 ## Acknowledgements
 
-I would like to thank  [Spencer Poff](http://spencerpoff.com/) for reviewing
-drafts of this article.
+I would like to thank [Delaine
+Orendorff](https://www.linkedin.com/in/dorendorff/) for reviewing drafts of this
+article. Thanks Mom!
 
 
 ## Want to run the code in this blog post?
