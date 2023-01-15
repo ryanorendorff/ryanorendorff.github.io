@@ -9,6 +9,7 @@ executable site
                   , containers == 0.6.4.*
                   , filepath == 1.4.2.*
                   , hakyll == 4.15.*
+                  , hakyll-images == 1.2.*
                   , pandoc == 2.17.*
                   , pandoc-types == 1.22.*
                   , skylighting-core == 0.12.*
