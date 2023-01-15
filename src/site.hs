@@ -12,6 +12,11 @@ import           Data.Yaml (decodeEither', ParseException)
 import           Data.Text.Encoding (encodeUtf8)
 
 import           Hakyll
+import           Hakyll.Images ( loadImage
+                               , compressJpgCompiler
+                               , resizeImageCompiler
+                               , scaleImageCompiler
+                               )
 
 --------------------------------------------------------------------------------
 
@@ -100,6 +105,19 @@ main = do
     match "fonts/**" $ do
         route   idRoute
         compile copyFileCompiler
+
+    -- Compress all source Jpegs to a Jpeg quality of 50 (maximum of 100)
+    match "posts/**.jpg" $ do
+        route idRoute
+        compile $ loadImage
+            >>= compressJpgCompiler 50
+
+    -- Scale images to fit within a 600x400 box
+    -- Aspect ratio will be preserved
+    match "posts/**.png" $ do
+        route idRoute
+        compile $ loadImage
+            >>= scaleImageCompiler 600 400
 
     match ("posts/*/*.lhs"
            .||. ("posts/*/*.md" .&&. complement ("posts/*/README.md"))
