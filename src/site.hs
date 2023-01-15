@@ -2,12 +2,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 import           Data.List (isSuffixOf)
 import qualified Data.Map as Map
-import           Data.Monoid (mappend)
-import           Skylighting.Styles
 import           Skylighting.Types hiding (Context)
-import           System.FilePath (takeDirectory, (<.>), (</>))
-import           Text.Pandoc.Highlighting (Style, styleToCss)
-import           Text.Pandoc.Options      (ReaderOptions (..), WriterOptions (..))
+import           System.FilePath (takeDirectory, (</>))
+import           Text.Pandoc.Highlighting (styleToCss)
+import           Text.Pandoc.Options      (WriterOptions (..))
 import           Text.Pandoc.Walk (query)
 import           Text.Pandoc.Definition
 import           Data.Yaml (decodeEither', ParseException)
@@ -174,12 +172,6 @@ removeFileNameRoute = (</> "index.html") . takeDirectory . toFilePath
 -- https://www.rohanjain.in/hakyll-clean-urls/
 cleanIndexUrls :: Item String -> Compiler (Item String)
 cleanIndexUrls = return . fmap (withUrls cleanIndex)
-
-cleanIndexHtmls :: Item String -> Compiler (Item String)
-cleanIndexHtmls = return . fmap (replaceAll pattern replacement)
-    where
-      pattern = "/index.html"
-      replacement = const "/"
 
 cleanIndex :: String -> String
 cleanIndex url
