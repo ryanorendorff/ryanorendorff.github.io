@@ -8,6 +8,10 @@ import           Skylighting.Types hiding (Context)
 import           System.FilePath (takeDirectory, (<.>), (</>))
 import           Text.Pandoc.Highlighting (Style, styleToCss)
 import           Text.Pandoc.Options      (ReaderOptions (..), WriterOptions (..))
+import           Text.Pandoc.Walk (query)
+import           Text.Pandoc.Definition
+import           Data.Yaml (decodeEither', ParseException)
+import           Data.Text.Encoding (encodeUtf8)
 
 import           Hakyll
 
@@ -89,8 +93,7 @@ main = do
   hakyll $ do
     create ["css/syntax.css"] $ do
       route idRoute
-      compile $ do
-        makeItem $ styleToCss pandocCodeStyle
+      compile $ makeItem $ styleToCss pandocCodeStyle
 
     match "css/**" $ do
         route   idRoute
@@ -100,13 +103,23 @@ main = do
         route   idRoute
         compile copyFileCompiler
 
-    match ("posts/*/*.lhs" .||. ("posts/*/*.md" .&&. complement ("posts/*/README.md"))) $ do
+    match ("posts/*/*.lhs"
+           .||. ("posts/*/*.md" .&&. complement ("posts/*/README.md"))
+          ) $ do
         route $ (customRoute removeFileNameRoute)
-        compile $ pandocCompiler'
-            >>= loadAndApplyTemplate "templates/post.html"    postCtx
-            >>= loadAndApplyTemplate "templates/default.html" postCtx
-            >>= relativizeUrls
-            >>= cleanIndexUrls
+        compile $ pandocCompiler' >>= applyPostTemplateAndRefine postCtx
+
+    match ("posts/*/*.ipynb") $ do
+        route $ (customRoute removeFileNameRoute)
+        compile $ do
+            body <- getResourceBody
+            parsed <- readPandoc body
+            let metadata = query extractMetadata parsed
+                metadataCtxs = map (\(key, value) -> constField key value) metadata
+                metadataCtx = mconcat metadataCtxs
+                postCtx' = metadataCtx `mappend` postCtx
+
+            renderPandoc body >>= applyPostTemplateAndRefine postCtx'
 
     create ["archive.html"] $ do
         route idRoute
@@ -142,6 +155,13 @@ main = do
 
 
 --------------------------------------------------------------------------------
+applyPostTemplateAndRefine :: Context String -> Item String -> Compiler (Item String)
+applyPostTemplateAndRefine ctx item =
+    loadAndApplyTemplate "templates/post.html" ctx item
+    >>= loadAndApplyTemplate "templates/default.html" ctx
+    >>= relativizeUrls
+    >>= cleanIndexUrls
+
 postCtx :: Context String
 postCtx =
     dateField "date" "%B %e, %Y" `mappend`
@@ -166,3 +186,15 @@ cleanIndex url
     | idx `isSuffixOf` url = take (length url - length idx) url
     | otherwise            = url
   where idx = "index.html"
+
+-- This is only for Jupyter notebooks. There is not a standard way to
+-- define the metadata within a Jupyter notebook. So instead we do the following
+-- somewhat hacky thing
+--
+-- 1. Define the first cell to be of raw type and put in the metadata.
+-- 2. Add the "meta" tag to the first cell.
+extractMetadata :: Block -> [(String, String)]
+extractMetadata (Div (_, _, [ ("tags", "[\"meta\"]") ]) [RawBlock _  b]) = case (decodeEither' (encodeUtf8 b) :: Either ParseException (Map.Map String String)) of
+    Left exc -> error $ "Could not parse metadata: " ++ show exc
+    Right d -> Map.toList d
+extractMetadata _ = []
