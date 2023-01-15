@@ -116,6 +116,10 @@ h2 {
   text-align: left;
 }
 
+article {
+  counter-reset: figures;
+}
+
 article .title {
   font-weight: 700;
   font-style: bold;
@@ -159,6 +163,16 @@ hr {
 .quiet {
     color: #666;
     font-size: 11pt
+}
+
+figure {
+  display: inline-block;
+  text-align: center;
+  counter-increment: figures;
+}
+
+figure figcaption:before {
+	content: 'Fig. ' counter(figures) ': ';
 }
 
 @media (max-width: 319px) {
