@@ -10,6 +10,9 @@ executable site
                   , filepath == 1.4.2.*
                   , hakyll == 4.15.*
                   , pandoc == 2.17.*
+                  , pandoc-types == 1.22.*
                   , skylighting-core == 0.12.*
+                  , text == 1.2.5.*
+                  , yaml == 0.11.*
   ghc-options:      -threaded
   default-language: Haskell2010
