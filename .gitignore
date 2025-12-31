@@ -5,6 +5,11 @@ result
 hakyll-cache
 _cache
 _site
+
+# Claude
+.claude/
+CLAUDE.md
+
 # Created by https://www.toptal.com/developers/gitignore/api/agda,haskell,rust,python,emacs,vim,visualstudiocode,direnv,jupyternotebooks,linux,macos,windows
 # Edit at https://www.toptal.com/developers/gitignore?templates=agda,haskell,rust,python,emacs,vim,visualstudiocode,direnv,jupyternotebooks,linux,macos,windows
 

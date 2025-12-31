@@ -1,19 +1,19 @@
+cabal-version:      3.0
 name:               ryanorendorff-website
 version:            0.1.0.0
 build-type:         Simple
-cabal-version:      >= 1.10
 
 executable site
   main-is:          site.hs
-  build-depends:    base == 4.*
-                  , containers == 0.6.4.*
-                  , filepath == 1.4.2.*
-                  , hakyll == 4.15.*
-                  , hakyll-images == 1.2.*
-                  , pandoc == 2.17.*
-                  , pandoc-types == 1.22.*
-                  , skylighting-core == 0.12.*
-                  , text == 1.2.5.*
-                  , yaml == 0.11.*
+  build-depends:    base >= 4 && < 5
+                  , containers >= 0.6 && < 1
+                  , filepath >= 1.4 && < 2
+                  , hakyll >= 4.15 && < 5
+                  , hakyll-images >= 1.2 && < 2
+                  , pandoc >= 2.17 && < 4
+                  , pandoc-types >= 1.22 && < 2
+                  , skylighting-core >= 0.12 && < 1
+                  , text >= 1.2 && < 3
+                  , yaml >= 0.11 && < 1
   ghc-options:      -threaded
   default-language: Haskell2010
