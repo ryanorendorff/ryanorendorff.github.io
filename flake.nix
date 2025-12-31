@@ -29,8 +29,9 @@
               tools = hp: {
                 ghcid = hp.ghcid;
                 cabal-install = hp.cabal-install;
+                fourmolu = hp.fourmolu;
+                hlint = hp.hlint;
               };
-              hlsCheck.enable = false;  # Faster dev shell builds
             };
             autoWire = [ "packages" "devShells" ];
           };
