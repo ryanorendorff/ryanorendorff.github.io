@@ -1,8 +1,9 @@
 let
-  pkgs = import (builtins.fetchTarball {
+  # Pin to nixos-25.11 (specific commit for reproducibility)
+  pkgs = import (fetchTarball {
     url =
-      "https://github.com/NixOS/nixpkgs/archive/8d6da33644bbd082b8a13f73ea2c7338190d7429.tar.gz";
-    sha256 = "sha256:0ynbn807jcrpwy9d0lbccvkbpgagincpwrr5qqkan8wi7ywap680";
+      "https://github.com/NixOS/nixpkgs/archive/89dbf01df72eb5ebe3b24a86334b12c27d68016a.tar.gz";
+    sha256 = "0flvkjsk87211wi8zxrs4rqapwc8sar9xlsjlzlawmf46l9jqdmp";
   }) { };
 in pkgs.mkShell {
   name = "agda-env";
