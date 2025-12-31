@@ -1,22 +1,25 @@
 --------------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
-import           Data.List (isSuffixOf)
-import qualified Data.Map as Map
-import           Skylighting.Types hiding (Context)
-import           System.FilePath (takeDirectory, (</>))
-import           Text.Pandoc.Highlighting (styleToCss)
-import           Text.Pandoc.Options      (WriterOptions (..))
-import           Text.Pandoc.Walk (query)
-import           Text.Pandoc.Definition
-import           Data.Yaml (decodeEither', ParseException)
-import           Data.Text.Encoding (encodeUtf8)
 
-import           Hakyll
-import           Hakyll.Images ( loadImage
-                               , compressJpgCompiler
-                               , resizeImageCompiler
-                               , scaleImageCompiler
-                               )
+import Data.List (isSuffixOf)
+import qualified Data.Map as Map
+import Data.Text.Encoding (encodeUtf8)
+import Data.Yaml (ParseException, decodeEither')
+import Skylighting.Types hiding (Context)
+import System.FilePath (takeDirectory, (</>))
+import Text.Pandoc.Definition
+import Text.Pandoc.Extensions
+import Text.Pandoc.Highlighting (styleToCss)
+import Text.Pandoc.Options (HTMLMathMethod (..), ReaderOptions (..), WriterOptions (..))
+import Text.Pandoc.Walk (query)
+
+import Hakyll
+import Hakyll.Images (
+    compressJpgCompiler,
+    loadImage,
+    resizeImageCompiler,
+    scaleImageCompiler,
+ )
 
 --------------------------------------------------------------------------------
 
@@ -39,149 +42,172 @@ nord15 = RGB 180 142 173
 
 -- | Style from the breeze-dark KDE syntax highlighting theme.
 nord :: Style
-nord = Style
-    { tokenStyles = Map.fromList
-        [ ( KeywordTok, defStyle { tokenColor = Just nord9 })
-        , ( DataTypeTok, defStyle { tokenColor = Just nord9 })
-        , ( DecValTok, defStyle { tokenColor = Just nord15 })
-        , ( BaseNTok, defStyle { tokenColor = Just nord15 })
-        , ( FloatTok, defStyle { tokenColor = Just nord15 })
-        , ( ConstantTok, defStyle { tokenColor = Just nord6 })
-        , ( CharTok, defStyle { tokenColor = Just nord13 })
-        , ( SpecialCharTok, defStyle { tokenColor = Just nord13 })
-        , ( StringTok, defStyle { tokenColor = Just nord14 })
-        , ( VerbatimStringTok, defStyle { tokenColor = Just (RGB 141 174 112) })
-        , ( SpecialStringTok, defStyle { tokenColor = Just nord12 })
-        , ( ImportTok, defStyle { tokenColor = Just nord14 })
-        , ( CommentTok, defStyle { tokenColor = Just (RGB 97 110 136) })
-        , ( DocumentationTok, defStyle { tokenColor = Just nord10 })
-        , ( AnnotationTok, defStyle { tokenColor = Just nord12 })
-        , ( CommentVarTok, defStyle { tokenColor = Just nord5 })
-        , ( OtherTok, defStyle { tokenColor = Just nord7 })
-        , ( FunctionTok, defStyle { tokenColor = Just nord8 })
-        , ( VariableTok, defStyle { tokenColor = Just nord10 })
-        , ( ControlFlowTok, defStyle { tokenColor = Just nord9 })
-        , ( OperatorTok, defStyle { tokenColor = Just nord9 })
-        , ( BuiltInTok, defStyle { tokenColor = Just nord8 })
-        , ( ExtensionTok, defStyle { tokenColor = Just nord7 })
-        , ( PreprocessorTok, defStyle { tokenColor = Just nord10 })
-        , ( AttributeTok, defStyle { tokenColor = Just nord7 })
-        , ( RegionMarkerTok, defStyle { tokenColor = Just nord8, tokenBackground = Just nord1 })
-        , ( InformationTok, defStyle { tokenColor = Just nord13 })
-        , ( WarningTok, defStyle { tokenColor = Just nord11 })
-        , ( AlertTok, defStyle { tokenColor = Just nord11, tokenBackground = Just nord1 })
-        , ( ErrorTok, defStyle { tokenColor = Just nord11, tokenUnderline = True })
-        , ( NormalTok, defStyle { tokenColor = Just nord4 })
-        ]
-    , defaultColor = Just nord4 -- Guess here based on Normal
-    , backgroundColor = Just nord0
-    , lineNumberColor = Just nord3
-    , lineNumberBackgroundColor = Just nord0
-    }
+nord =
+    Style
+        { tokenStyles =
+            Map.fromList
+                [ (KeywordTok, defStyle{tokenColor = Just nord9})
+                , (DataTypeTok, defStyle{tokenColor = Just nord9})
+                , (DecValTok, defStyle{tokenColor = Just nord15})
+                , (BaseNTok, defStyle{tokenColor = Just nord15})
+                , (FloatTok, defStyle{tokenColor = Just nord15})
+                , (ConstantTok, defStyle{tokenColor = Just nord6})
+                , (CharTok, defStyle{tokenColor = Just nord13})
+                , (SpecialCharTok, defStyle{tokenColor = Just nord13})
+                , (StringTok, defStyle{tokenColor = Just nord14})
+                , (VerbatimStringTok, defStyle{tokenColor = Just (RGB 141 174 112)})
+                , (SpecialStringTok, defStyle{tokenColor = Just nord12})
+                , (ImportTok, defStyle{tokenColor = Just nord14})
+                , (CommentTok, defStyle{tokenColor = Just (RGB 97 110 136)})
+                , (DocumentationTok, defStyle{tokenColor = Just nord10})
+                , (AnnotationTok, defStyle{tokenColor = Just nord12})
+                , (CommentVarTok, defStyle{tokenColor = Just nord5})
+                , (OtherTok, defStyle{tokenColor = Just nord7})
+                , (FunctionTok, defStyle{tokenColor = Just nord8})
+                , (VariableTok, defStyle{tokenColor = Just nord10})
+                , (ControlFlowTok, defStyle{tokenColor = Just nord9})
+                , (OperatorTok, defStyle{tokenColor = Just nord9})
+                , (BuiltInTok, defStyle{tokenColor = Just nord8})
+                , (ExtensionTok, defStyle{tokenColor = Just nord7})
+                , (PreprocessorTok, defStyle{tokenColor = Just nord10})
+                , (AttributeTok, defStyle{tokenColor = Just nord7})
+                , (RegionMarkerTok, defStyle{tokenColor = Just nord8, tokenBackground = Just nord1})
+                , (InformationTok, defStyle{tokenColor = Just nord13})
+                , (WarningTok, defStyle{tokenColor = Just nord11})
+                , (AlertTok, defStyle{tokenColor = Just nord11, tokenBackground = Just nord1})
+                , (ErrorTok, defStyle{tokenColor = Just nord11, tokenUnderline = True})
+                , (NormalTok, defStyle{tokenColor = Just nord4})
+                ]
+        , defaultColor = Just nord4 -- Guess here based on Normal
+        , backgroundColor = Just nord0
+        , lineNumberColor = Just nord3
+        , lineNumberBackgroundColor = Just nord0
+        }
 
 pandocCodeStyle :: Style
 pandocCodeStyle = nord
 
-pandocCompiler' :: Compiler (Item String)
-pandocCompiler' =
-  pandocCompilerWith
+-- From https://gisli.hamstur.is/2020/08/my-personal-hakyll-cheatsheet/#katex-to-render-latex-math
+readerOptions :: ReaderOptions
+readerOptions =
     defaultHakyllReaderOptions
+        { readerExtensions =
+            readerExtensions defaultHakyllReaderOptions
+                <> extensionsFromList
+                    [ Ext_tex_math_single_backslash
+                    , Ext_tex_math_double_backslash
+                    , Ext_tex_math_dollars
+                    , Ext_latex_macros
+                    , Ext_inline_code_attributes
+                    , Ext_abbreviations
+                    ]
+        }
+
+writerOptions :: WriterOptions
+writerOptions =
     defaultHakyllWriterOptions
-      { writerHighlightStyle   = Just pandocCodeStyle
-      }
+        { writerHighlightStyle = Just pandocCodeStyle
+        , writerHTMLMathMethod = MathJax ""
+        }
+
+-- This is a shortcut for `getResourceBody >>= renderPandocWith readerOptions writerOptions`
+pandocCompiler' :: Compiler (Item String)
+pandocCompiler' = pandocCompilerWith readerOptions writerOptions
 
 main :: IO ()
 main = do
+    hakyll $ do
+        create ["css/syntax.css"] $ do
+            route idRoute
+            compile $ makeItem $ styleToCss pandocCodeStyle
 
-  hakyll $ do
-    create ["css/syntax.css"] $ do
-      route idRoute
-      compile $ makeItem $ styleToCss pandocCodeStyle
+        match "css/**" $ do
+            route idRoute
+            compile compressCssCompiler
 
-    match "css/**" $ do
-        route   idRoute
-        compile compressCssCompiler
+        match "fonts/**" $ do
+            route idRoute
+            compile copyFileCompiler
 
-    match "fonts/**" $ do
-        route   idRoute
-        compile copyFileCompiler
+        -- Compress all source Jpegs to a Jpeg quality of 50 (maximum of 100)
+        match "posts/**.jpg" $ do
+            route idRoute
+            compile $
+                loadImage
+                    >>= compressJpgCompiler 50
 
-    -- Compress all source Jpegs to a Jpeg quality of 50 (maximum of 100)
-    match "posts/**.jpg" $ do
-        route idRoute
-        compile $ loadImage
-            >>= compressJpgCompiler 50
+        -- Scale images to fit within a 600x400 box
+        -- Aspect ratio will be preserved
+        match "posts/**.png" $ do
+            route idRoute
+            compile $
+                loadImage
+                    >>= scaleImageCompiler 600 400
 
-    -- Scale images to fit within a 600x400 box
-    -- Aspect ratio will be preserved
-    match "posts/**.png" $ do
-        route idRoute
-        compile $ loadImage
-            >>= scaleImageCompiler 600 400
+        match
+            ( "posts/*/*.lhs"
+                .||. ("posts/*/*.md" .&&. complement "posts/*/README.md")
+            )
+            $ do
+                route (customRoute removeFileNameRoute)
+                compile $ pandocCompiler' >>= applyPostTemplateAndRefine postCtx
 
-    match ("posts/*/*.lhs"
-           .||. ("posts/*/*.md" .&&. complement ("posts/*/README.md"))
-          ) $ do
-        route $ (customRoute removeFileNameRoute)
-        compile $ pandocCompiler' >>= applyPostTemplateAndRefine postCtx
+        match "posts/*/*.ipynb" $ do
+            route (customRoute removeFileNameRoute)
+            compile $ do
+                body <- getResourceBody
+                parsed <- readPandoc body
+                let metadata = query extractMetadata parsed
+                    metadataCtxs = map (uncurry constField) metadata
+                    metadataCtx = mconcat metadataCtxs
+                    postCtx' = metadataCtx `mappend` postCtx
 
-    match ("posts/*/*.ipynb") $ do
-        route $ (customRoute removeFileNameRoute)
-        compile $ do
-            body <- getResourceBody
-            parsed <- readPandoc body
-            let metadata = query extractMetadata parsed
-                metadataCtxs = map (\(key, value) -> constField key value) metadata
-                metadataCtx = mconcat metadataCtxs
-                postCtx' = metadataCtx `mappend` postCtx
+                renderPandoc body >>= applyPostTemplateAndRefine postCtx'
 
-            renderPandoc body >>= applyPostTemplateAndRefine postCtx'
+        create ["archive.html"] $ do
+            route idRoute
+            compile $ do
+                posts <- recentFirst =<< loadAll "posts/*/*"
+                let archiveCtx =
+                        listField "posts" postCtx (return posts)
+                            `mappend` constField "title" "Archives"
+                            `mappend` defaultContext
 
-    create ["archive.html"] $ do
-        route idRoute
-        compile $ do
-            posts <- recentFirst =<< loadAll "posts/*/*"
-            let archiveCtx =
-                    listField "posts" postCtx (return posts) `mappend`
-                    constField "title" "Archives"            `mappend`
-                    defaultContext
+                makeItem ""
+                    >>= loadAndApplyTemplate "templates/archive.html" archiveCtx
+                    >>= loadAndApplyTemplate "templates/default.html" archiveCtx
+                    >>= relativizeUrls
+                    >>= cleanIndexUrls
 
-            makeItem ""
-                >>= loadAndApplyTemplate "templates/archive.html" archiveCtx
-                >>= loadAndApplyTemplate "templates/default.html" archiveCtx
-                >>= relativizeUrls
-                >>= cleanIndexUrls
+        create ["index.md"] $ do
+            route $ setExtension "html"
+            compile $ do
+                posts <- recentFirst =<< loadAll "posts/*/*"
+                let indexCtx =
+                        listField "posts" postCtx (return posts)
+                            `mappend` constField "title" "Home"
+                            `mappend` defaultContext
 
-    create ["index.md"] $ do
-        route $ setExtension "html"
-        compile $ do
-            posts <- recentFirst =<< loadAll "posts/*/*"
-            let indexCtx =
-                    listField "posts" postCtx (return posts) `mappend`
-                    constField "title" "Home"                `mappend`
-                    defaultContext
+                pandocCompiler
+                    >>= applyAsTemplate indexCtx
+                    >>= loadAndApplyTemplate "templates/default.html" indexCtx
+                    >>= relativizeUrls
+                    >>= cleanIndexUrls
 
-            pandocCompiler
-                >>= applyAsTemplate indexCtx
-                >>= loadAndApplyTemplate "templates/default.html" indexCtx
-                >>= relativizeUrls
-                >>= cleanIndexUrls
-
-    match "templates/*" $ compile templateBodyCompiler
-
+        match "templates/*" $ compile templateBodyCompiler
 
 --------------------------------------------------------------------------------
 applyPostTemplateAndRefine :: Context String -> Item String -> Compiler (Item String)
 applyPostTemplateAndRefine ctx item =
     loadAndApplyTemplate "templates/post.html" ctx item
-    >>= loadAndApplyTemplate "templates/default.html" ctx
-    >>= relativizeUrls
-    >>= cleanIndexUrls
+        >>= loadAndApplyTemplate "templates/default.html" ctx
+        >>= relativizeUrls
+        >>= cleanIndexUrls
 
 postCtx :: Context String
 postCtx =
-    dateField "date" "%B %e, %Y" `mappend`
-    defaultContext
+    dateField "date" "%B %e, %Y"
+        `mappend` defaultContext
 
 removeFileNameRoute :: Identifier -> FilePath
 removeFileNameRoute = (</> "index.html") . takeDirectory . toFilePath
@@ -194,8 +220,9 @@ cleanIndexUrls = return . fmap (withUrls cleanIndex)
 cleanIndex :: String -> String
 cleanIndex url
     | idx `isSuffixOf` url = take (length url - length idx) url
-    | otherwise            = url
-  where idx = "index.html"
+    | otherwise = url
+  where
+    idx = "index.html"
 
 -- This is only for Jupyter notebooks. There is not a standard way to
 -- define the metadata within a Jupyter notebook. So instead we do the following
@@ -204,7 +231,7 @@ cleanIndex url
 -- 1. Define the first cell to be of raw type and put in the metadata.
 -- 2. Add the "meta" tag to the first cell.
 extractMetadata :: Block -> [(String, String)]
-extractMetadata (Div (_, _, [ ("tags", "[\"meta\"]") ]) [RawBlock _  b]) = case (decodeEither' (encodeUtf8 b) :: Either ParseException (Map.Map String String)) of
+extractMetadata (Div (_, _, [("tags", "[\"meta\"]")]) [RawBlock _ b]) = case (decodeEither' (encodeUtf8 b) :: Either ParseException (Map.Map String String)) of
     Left exc -> error $ "Could not parse metadata: " ++ show exc
     Right d -> Map.toList d
 extractMetadata _ = []
